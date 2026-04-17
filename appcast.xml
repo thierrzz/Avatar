@@ -1,0 +1,11 @@
+<?xml version="1.0" standalone="yes"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Avatar Updates</title>
+    <!--
+      Voeg een nieuw <item> toe per release.
+      Meest recente bovenaan.
+      edSignature genereer je met: ./sign_update Avatar-X.X.zip
+    -->
+  </channel>
+</rss>

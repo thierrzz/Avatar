@@ -1,0 +1,62 @@
+name: Avatar
+options:
+  bundleIdPrefix: nl.avatar
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: "5J92MMGKTX"
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "Apple Development"
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  Avatar:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Avatar
+        excludes:
+          - "Info.plist"
+          - "Avatar.entitlements"
+    dependencies:
+      - package: Sparkle
+    resources:
+      - path: Avatar/Assets.xcassets
+      - path: Avatar/Resources
+    info:
+      path: Avatar/Info.plist
+      properties:
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundleDisplayName: Avatar
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSHumanReadableCopyright: "Avatar"
+        NSPrincipalClass: NSApplication
+        LSApplicationCategoryType: public.app-category.photography
+        SUFeedURL: "https://raw.githubusercontent.com/thierrzz/Avatar/main/appcast.xml"
+        SUPublicEDKey: "iSKu+XIaNe3MhrEGij3zPVOqKvDuU+U1cz+NA2tJ4eU="
+        SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 86400
+        SUEnableInstallerLauncherService: true
+        SUEnableDownloaderService: true
+        SUAllowsAutomaticUpdates: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: nl.avatar.app
+        PRODUCT_NAME: Avatar
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        COMBINE_HIDPI_IMAGES: YES
+        CODE_SIGN_ENTITLEMENTS: Avatar/Avatar.entitlements
