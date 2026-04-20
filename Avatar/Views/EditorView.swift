@@ -426,13 +426,13 @@ struct EditorView: View {
             // MARK: Adjustments
             Section {
                 DisclosureGroup(Loc.colorAdjustments) {
-                    adjustmentSlider(Loc.exposure,     value: $portrait.adjExposure,    range: -2...2,       neutral: 0,   format: "%+.2f")
-                    adjustmentSlider(Loc.contrast,     value: $portrait.adjContrast,    range: 0.5...1.5,    neutral: 1,   format: "%+.2f")
-                    adjustmentSlider(Loc.tint,         value: $portrait.adjTint,        range: -100...100,   neutral: 0,   format: "%+.0f")
-                    adjustmentSlider(Loc.saturation,   value: $portrait.adjSaturation,  range: 0...2,        neutral: 1,   format: "%+.2f")
-                    adjustmentSlider(Loc.temperature,  value: $portrait.adjTemperature, range: -2000...2000, neutral: 0,   format: "%+.0fK")
-                    adjustmentSlider(Loc.highlights,   value: $portrait.adjHighlights,  range: 0...2,        neutral: 1,   format: "%+.2f")
-                    adjustmentSlider(Loc.shadows,      value: $portrait.adjShadows,     range: -1...1,       neutral: 0,   format: "%+.2f")
+                    adjustmentSlider(Loc.exposure,     value: $portrait.adjExposure,    range: -2...2,       neutral: 0,   displayScale: 50)
+                    adjustmentSlider(Loc.contrast,     value: $portrait.adjContrast,    range: 0.5...1.5,    neutral: 1,   displayScale: 200)
+                    adjustmentSlider(Loc.tint,         value: $portrait.adjTint,        range: -100...100,   neutral: 0,   displayScale: 1)
+                    adjustmentSlider(Loc.saturation,   value: $portrait.adjSaturation,  range: 0...2,        neutral: 1,   displayScale: 100)
+                    adjustmentSlider(Loc.temperature,  value: $portrait.adjTemperature, range: -2000...2000, neutral: 0,   displayScale: 0.05)
+                    adjustmentSlider(Loc.highlights,   value: $portrait.adjHighlights,  range: 0...2,        neutral: 1,   displayScale: 100)
+                    adjustmentSlider(Loc.shadows,      value: $portrait.adjShadows,     range: -1...1,       neutral: 0,   displayScale: 100)
 
                     Button(Loc.resetAdjustments) {
                         resetAdjustments()
@@ -492,7 +492,7 @@ struct EditorView: View {
         value: Binding<Double>,
         range: ClosedRange<Double>,
         neutral: Double,
-        format: String
+        displayScale: Double
     ) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(.caption).foregroundStyle(.secondary)
@@ -502,7 +502,9 @@ struct EditorView: View {
                         get: { value.wrappedValue },
                         set: { newValue in
                             trackSliderUndo(actionName: label)
-                            value.wrappedValue = newValue
+                            let snapThreshold = (range.upperBound - range.lowerBound) * 0.02
+                            let snapped = abs(newValue - neutral) < snapThreshold ? neutral : newValue
+                            value.wrappedValue = snapped
                             portrait.updatedAt = Date()
                             appState.invalidateAdjusted(for: portrait)
                             try? context.save()
@@ -510,7 +512,7 @@ struct EditorView: View {
                     ),
                     in: range
                 )
-                Text(String(format: format, value.wrappedValue - neutral))
+                Text(String(format: "%+.0f", (value.wrappedValue - neutral) * displayScale))
                     .font(.system(.caption, design: .monospaced))
                     .frame(width: 60, alignment: .trailing)
             }
