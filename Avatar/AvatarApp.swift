@@ -75,6 +75,26 @@ struct AvatarApp: App {
                         runJoin(join)
                     }
                 }
+                .alert(
+                    Loc.wrongAccountTitle,
+                    isPresented: Binding(
+                        get: { appState.wrongAccountInvite != nil },
+                        set: { if !$0 { appState.wrongAccountInvite = nil } }
+                    ),
+                    presenting: appState.wrongAccountInvite
+                ) { info in
+                    Button(Loc.switchAccount) {
+                        appState.pendingJoin = info.join
+                        appState.wrongAccountInvite = nil
+                        googleAuth.signOut()
+                        googleAuth.signIn()
+                    }
+                    Button(Loc.dismiss, role: .cancel) {
+                        appState.wrongAccountInvite = nil
+                    }
+                } message: { info in
+                    Text(Loc.wrongAccountMessage(invited: info.invited, actual: info.actual))
+                }
         }
         .modelContainer(sharedModelContainer)
         .commands {
@@ -111,6 +131,17 @@ struct AvatarApp: App {
     }
 
     private func runJoin(_ join: PendingJoin) {
+        if let invited = join.invitedEmail,
+           let actual = googleAuth.userEmail,
+           invited.caseInsensitiveCompare(actual) != .orderedSame {
+            appState.wrongAccountInvite = WrongAccountInvite(
+                invited: invited,
+                actual: actual,
+                join: join
+            )
+            return
+        }
+
         let context = sharedModelContainer.mainContext
         Task { @MainActor in
             do {

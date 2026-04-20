@@ -421,6 +421,13 @@ enum Loc {
     static var revoke: String          { en ? "Remove" : "Verwijder" }
     static var invalidEmail: String    { en ? "Enter a valid email address." : "Voer een geldig e-mailadres in." }
     static var alreadyInvited: String  { en ? "That email is already invited." : "Dat e-mailadres is al uitgenodigd." }
+    static var wrongAccountTitle: String { en ? "Wrong Google account" : "Onjuist Google-account" }
+    static func wrongAccountMessage(invited: String, actual: String) -> String {
+        en ? "This invitation was sent to \(invited), but you're signed in as \(actual). Switch accounts to accept the invitation."
+           : "Deze uitnodiging is verzonden naar \(invited), maar je bent ingelogd als \(actual). Wissel van account om de uitnodiging te accepteren."
+    }
+    static var switchAccount: String   { en ? "Switch Account" : "Wissel van account" }
+    static var dismiss: String         { en ? "Dismiss" : "Sluiten" }
     static func inviteEmailBody(
         inviterName: String,
         workspaceName: String,

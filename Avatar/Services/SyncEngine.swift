@@ -14,15 +14,21 @@ enum AvatarInvite {
     static let downloadURL = "https://github.com/thierrzz/Avatar/releases/latest"
 
     /// Builds the `avatar://join` deep link an invitee clicks from the
-    /// notification email.
-    static func joinURL(folderID: String, name: String) -> URL {
+    /// notification email. `invitedEmail` lets the invitee's app detect
+    /// when they've signed in with a different Google account than the
+    /// one the invitation targeted.
+    static func joinURL(folderID: String, name: String, invitedEmail: String? = nil) -> URL {
         var components = URLComponents()
         components.scheme = "avatar"
         components.host = "join"
-        components.queryItems = [
+        var items: [URLQueryItem] = [
             URLQueryItem(name: "folderID", value: folderID),
             URLQueryItem(name: "name", value: name)
         ]
+        if let invitedEmail {
+            items.append(URLQueryItem(name: "invitedEmail", value: invitedEmail))
+        }
+        components.queryItems = items
         return components.url!
     }
 }

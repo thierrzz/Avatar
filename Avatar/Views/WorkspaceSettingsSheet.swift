@@ -298,7 +298,8 @@ struct WorkspaceSettingsSheet: View {
         let inviterName = auth.userName ?? auth.userEmail ?? "A colleague"
         let deepLink = AvatarInvite.joinURL(
             folderID: workspace.driveFolderID,
-            name: workspace.name
+            name: workspace.name,
+            invitedEmail: email
         ).absoluteString
         let message = Loc.inviteEmailBody(
             inviterName: inviterName,

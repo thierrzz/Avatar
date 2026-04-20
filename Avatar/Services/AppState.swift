@@ -6,10 +6,11 @@ enum SettingsTab: String {
     case backgrounds, exportPresets, aiModel, updates, language
 }
 
-/// Parsed payload of an `avatar://join?folderID=…&name=…` deep link.
+/// Parsed payload of an `avatar://join?folderID=…&name=…&invitedEmail=…` deep link.
 struct PendingJoin: Equatable {
     let folderID: String
     let name: String
+    let invitedEmail: String?
 
     init?(url: URL) {
         guard url.scheme == "avatar",
@@ -20,7 +21,16 @@ struct PendingJoin: Equatable {
         else { return nil }
         self.folderID = folderID
         self.name = items.first(where: { $0.name == "name" })?.value ?? "Shared workspace"
+        self.invitedEmail = items.first(where: { $0.name == "invitedEmail" })?.value
     }
+}
+
+/// Surfaced to the user when they clicked an `avatar://join` link but the
+/// Google account they signed in with does not match the invited email.
+struct WrongAccountInvite: Equatable {
+    let invited: String
+    let actual: String
+    let join: PendingJoin
 }
 
 @MainActor
@@ -86,6 +96,11 @@ final class AppState {
     /// A workspace-join intent received via an `avatar://join` deep link
     /// while the user wasn't signed in. Drained when sign-in completes.
     var pendingJoin: PendingJoin?
+
+    /// Set when a deep-link join was attempted but the signed-in account
+    /// differs from the email the invitation targeted. UI shows a banner
+    /// offering to switch accounts.
+    var wrongAccountInvite: WrongAccountInvite?
 
     /// Which tab to select when the Settings window opens.
     var selectedSettingsTab: SettingsTab = .backgrounds
