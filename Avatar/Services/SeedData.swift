@@ -51,23 +51,42 @@ enum SeedData {
     }
 
     private static func seedDefaultBackgroundIfNeeded(context: ModelContext) {
+        // (resource filename without extension, display name, isDefault)
+        let seeds: [(String, String, Bool)] = [
+            ("DefaultBackground", Loc.defaultBg, true),
+            ("Mesh 01", "Mesh 01", false),
+            ("Mesh 02", "Mesh 02", false),
+            ("Mesh 03", "Mesh 03", false),
+            ("Mesh 04", "Mesh 04", false),
+            ("Mesh 05", "Mesh 05", false),
+            ("Mesh 06", "Mesh 06", false),
+        ]
+
         let descriptor = FetchDescriptor<BackgroundPreset>()
         let existing = (try? context.fetch(descriptor)) ?? []
-        if !existing.isEmpty { return }
+        let existingNames = Set(existing.map(\.name))
 
-        var data: Data? = nil
-        if let url = Bundle.main.url(forResource: "DefaultBackground", withExtension: "png") {
-            data = try? Data(contentsOf: url)
+        var didInsert = false
+        for (resource, displayName, isDefault) in seeds {
+            if existingNames.contains(displayName) { continue }
+
+            var data: Data? = nil
+            if let url = Bundle.main.url(forResource: resource, withExtension: "png") {
+                data = try? Data(contentsOf: url)
+            }
+            guard data != nil else { continue }
+
+            let preset = BackgroundPreset(
+                name: displayName,
+                kind: .image,
+                imageData: data,
+                color: (0.94, 0.95, 0.97, 1.0),
+                isDefault: isDefault
+            )
+            context.insert(preset)
+            didInsert = true
         }
 
-        let preset = BackgroundPreset(
-            name: Loc.defaultBg,
-            kind: data != nil ? .image : .color,
-            imageData: data,
-            color: (0.94, 0.95, 0.97, 1.0),
-            isDefault: true
-        )
-        context.insert(preset)
-        try? context.save()
+        if didInsert { try? context.save() }
     }
 }

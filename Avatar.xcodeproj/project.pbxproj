@@ -10,6 +10,12 @@
 		16F9AC78F685F11C91A31369 /* ExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF5D10603D8C4CBCEBF63691 /* ExportSheet.swift */; };
 		170942BEC19C7093EBEA2F63 /* ImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A09E65B08B3DB5530D416B59 /* ImageProcessor.swift */; };
 		1B549F5BAEF2A701E1947D8D /* DefaultBackground.png in Resources */ = {isa = PBXBuildFile; fileRef = 9D18F070EDD3795562BD0ADC /* DefaultBackground.png */; };
+		BE0100000000000000000001 /* Mesh 01.png in Resources */ = {isa = PBXBuildFile; fileRef = AE0100000000000000000001 /* Mesh 01.png */; };
+		BE0200000000000000000002 /* Mesh 02.png in Resources */ = {isa = PBXBuildFile; fileRef = AE0200000000000000000002 /* Mesh 02.png */; };
+		BE0300000000000000000003 /* Mesh 03.png in Resources */ = {isa = PBXBuildFile; fileRef = AE0300000000000000000003 /* Mesh 03.png */; };
+		BE0400000000000000000004 /* Mesh 04.png in Resources */ = {isa = PBXBuildFile; fileRef = AE0400000000000000000004 /* Mesh 04.png */; };
+		BE0500000000000000000005 /* Mesh 05.png in Resources */ = {isa = PBXBuildFile; fileRef = AE0500000000000000000005 /* Mesh 05.png */; };
+		BE0600000000000000000006 /* Mesh 06.png in Resources */ = {isa = PBXBuildFile; fileRef = AE0600000000000000000006 /* Mesh 06.png */; };
 		22F331DA021385FF381B6BEA /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A86EE5462E82319D323AF1C /* EditorView.swift */; };
 		2CC00BB877BB10A664982FB7 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355D09CA2450C106801EAD77 /* ModelManager.swift */; };
 		58C7C65381A278B69B016DDB /* MainWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877D5A42F98746FCC7A61452 /* MainWindow.swift */; };
@@ -50,6 +56,12 @@
 		877D5A42F98746FCC7A61452 /* MainWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindow.swift; sourceTree = "<group>"; };
 		97E1236EB27F5CE8A83B67DF /* ExportPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportPreset.swift; sourceTree = "<group>"; };
 		9D18F070EDD3795562BD0ADC /* DefaultBackground.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = DefaultBackground.png; sourceTree = "<group>"; };
+		AE0100000000000000000001 /* Mesh 01.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 01.png"; sourceTree = "<group>"; };
+		AE0200000000000000000002 /* Mesh 02.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 02.png"; sourceTree = "<group>"; };
+		AE0300000000000000000003 /* Mesh 03.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 03.png"; sourceTree = "<group>"; };
+		AE0400000000000000000004 /* Mesh 04.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 04.png"; sourceTree = "<group>"; };
+		AE0500000000000000000005 /* Mesh 05.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 05.png"; sourceTree = "<group>"; };
+		AE0600000000000000000006 /* Mesh 06.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 06.png"; sourceTree = "<group>"; };
 		A09E65B08B3DB5530D416B59 /* ImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProcessor.swift; sourceTree = "<group>"; };
 		A67F34619015B892E51F8BA0 /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		A781DB69220F07CD4C7450BC /* Portrait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portrait.swift; sourceTree = "<group>"; };
@@ -131,6 +143,12 @@
 			isa = PBXGroup;
 			children = (
 				9D18F070EDD3795562BD0ADC /* DefaultBackground.png */,
+				AE0100000000000000000001 /* Mesh 01.png */,
+				AE0200000000000000000002 /* Mesh 02.png */,
+				AE0300000000000000000003 /* Mesh 03.png */,
+				AE0400000000000000000004 /* Mesh 04.png */,
+				AE0500000000000000000005 /* Mesh 05.png */,
+				AE0600000000000000000006 /* Mesh 06.png */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -226,6 +244,12 @@
 			files = (
 				DCD584C8769017840D8AC9CB /* Assets.xcassets in Resources */,
 				1B549F5BAEF2A701E1947D8D /* DefaultBackground.png in Resources */,
+				BE0100000000000000000001 /* Mesh 01.png in Resources */,
+				BE0200000000000000000002 /* Mesh 02.png in Resources */,
+				BE0300000000000000000003 /* Mesh 03.png in Resources */,
+				BE0400000000000000000004 /* Mesh 04.png in Resources */,
+				BE0500000000000000000005 /* Mesh 05.png in Resources */,
+				BE0600000000000000000006 /* Mesh 06.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
