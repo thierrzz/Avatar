@@ -31,8 +31,23 @@ import subprocess
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 MODEL_NAME = "BiRefNet"
-HF_MODEL_ID = "ZhengPeng7/BiRefNet"
+# Portrait fine-tune of BiRefNet — trained specifically on human subjects so
+# face/hair/shoulder edges hold up far better than the generic DIS checkpoint
+# we shipped in v1.
+HF_MODEL_ID = "ZhengPeng7/BiRefNet-portrait"
 INPUT_SIZE = 1024  # BiRefNet expects 1024x1024 input
+
+# Keep in sync with ModelManager.currentModelVersion — written as a sidecar
+# next to the installed .mlmodelc so the app can detect stale builds and
+# re-download on launch.
+MODEL_VERSION = "v2"
+VERSION_SIDECAR_NAME = ".model_version"
+
+# ImageNet normalization stats BiRefNet was trained with. We bake these into
+# the traced graph so CoreML sees the pre-processing the model actually expects
+# — the v1 conversion missed this and was the primary cause of leaky mattes.
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
 BUILD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build")
 
 # App Support directory where Avatar looks for the model.
@@ -94,7 +109,20 @@ def convert_to_coreml(output_dir: str):
         def __init__(self, base_model):
             super().__init__()
             self.model = base_model
+            # Register ImageNet stats as buffers so they're frozen into the
+            # traced graph. CoreML divides incoming pixels by 255 (see the
+            # ImageType `scale` below); the wrapper then applies the per-
+            # channel mean subtraction and std division PyTorch training used.
+            self.register_buffer(
+                "mean", torch.tensor(IMAGENET_MEAN).view(1, 3, 1, 1)
+            )
+            self.register_buffer(
+                "std", torch.tensor(IMAGENET_STD).view(1, 3, 1, 1)
+            )
+
         def forward(self, x):
+            # x arrives in 0-1 RGB (CoreML scale=1/255 applied upstream).
+            x = (x - self.mean) / self.std
             outputs = self.model(x)
             # BiRefNet returns a list; take the final (finest) prediction
             pred = outputs[-1][-1] if isinstance(outputs[-1], (list, tuple)) else outputs[-1]
@@ -126,11 +154,12 @@ def convert_to_coreml(output_dir: str):
     )
 
     # Set model metadata
-    mlmodel.author = "ZhengPeng7 (BiRefNet) — converted for Avatar"
+    mlmodel.author = "ZhengPeng7 (BiRefNet-portrait) — converted for Avatar"
     mlmodel.license = "MIT"
     mlmodel.short_description = (
-        "BiRefNet: Bilateral Reference for High-Resolution Dichotomous Image "
-        "Segmentation. Alpha matte for hair and fine edge detail."
+        "BiRefNet-portrait: portrait fine-tune of BiRefNet for high-"
+        "resolution person segmentation with ImageNet normalization baked "
+        "into the graph. Alpha matte for hair and fine edge detail."
     )
 
     mlpackage_path = os.path.join(output_dir, f"{MODEL_NAME}.mlpackage")
@@ -201,7 +230,15 @@ def install_to_app(compiled_path: str):
         shutil.rmtree(dest)
 
     shutil.copytree(compiled_path, dest)
+
+    # Stamp the install with the model version so the app doesn't treat this
+    # as a stale v1 install and wipe it on next launch.
+    sidecar_path = os.path.join(APP_SUPPORT_DIR, VERSION_SIDECAR_NAME)
+    with open(sidecar_path, "w") as f:
+        f.write(MODEL_VERSION)
+
     print(f"  Model geinstalleerd in: {dest}")
+    print(f"  Versie-sidecar: {sidecar_path} ({MODEL_VERSION})")
     print("  Avatar zal het model automatisch detecteren.")
 
 

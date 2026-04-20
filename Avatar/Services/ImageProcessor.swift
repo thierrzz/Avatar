@@ -424,11 +424,14 @@ enum ImageProcessor {
         // Scale the mask to the original image resolution.
         let mask = scaleMaskToExtent(rawMask, extent: extent)
 
-        // Apply guided filter for edge refinement using the original as guide.
+        // Apply a light guided-filter pass for hair-fringe refinement. Keep
+        // radius small and epsilon loose — an aggressively edge-preserving
+        // filter (tiny epsilon) snaps the matte to background color edges
+        // and can reinforce leaks when the base matte has any error.
         let guided = mask.applyingFilter("CIGuidedFilter", parameters: [
             "inputGuideImage": originalCI,
-            kCIInputRadiusKey: 6.0,
-            "inputEpsilon": 0.0002
+            kCIInputRadiusKey: 2.0,
+            "inputEpsilon": 0.01
         ]).cropped(to: extent)
 
         // Composite: original RGB + BiRefNet alpha matte.

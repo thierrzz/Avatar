@@ -49,9 +49,21 @@ final class ModelManager {
 
     // MARK: - Model access
 
-    /// Returns the compiled CoreML model, loading it from disk if needed.
-    /// Returns nil when the model is not installed or fails to load.
+    /// Returns the cached compiled CoreML model if it has already been loaded
+    /// into memory. Never performs a synchronous load — first-time loads must
+    /// go through `loadModelAsync()` to keep the main thread responsive (the
+    /// Neural Engine program compile on `MLModel.init` can block for several
+    /// seconds on first use and would otherwise freeze the UI mid-drop).
     func loadModel() -> MLModel? {
+        guard status == .ready else { return nil }
+        return cachedModel
+    }
+
+    /// Loads the compiled CoreML model, performing the heavy
+    /// `MLModel(contentsOf:configuration:)` call on a background executor so
+    /// the main thread stays responsive. Safe to call repeatedly — subsequent
+    /// calls return the cached instance.
+    func loadModelAsync() async -> MLModel? {
         guard status == .ready else { return nil }
         if let cached = cachedModel { return cached }
 
@@ -62,15 +74,34 @@ final class ModelManager {
         }
 
         do {
-            let config = MLModelConfiguration()
-            config.computeUnits = .all
-            let model = try MLModel(contentsOf: compiledURL, configuration: config)
+            let model = try await Self.loadCompiled(at: compiledURL)
             cachedModel = model
             return model
         } catch {
             print("[ModelManager] Failed to load model: \(error)")
             status = .error(Loc.modelLoadFailed(error.localizedDescription))
             return nil
+        }
+    }
+
+    /// Background-thread model loader. Isolated to a detached task so the
+    /// Neural Engine compile step does not stall the main actor.
+    nonisolated private static func loadCompiled(at url: URL) async throws -> MLModel {
+        try await Task.detached(priority: .userInitiated) {
+            let config = MLModelConfiguration()
+            config.computeUnits = .all
+            return try MLModel(contentsOf: url, configuration: config)
+        }.value
+    }
+
+    /// Starts a background load of the compiled model if one isn't already in
+    /// memory. Called on launch / after install so the first drop doesn't pay
+    /// the multi-second Neural Engine compile cost on the main thread.
+    func warmUp() {
+        guard status == .ready, cachedModel == nil else { return }
+        Task { [weak self] in
+            _ = await self?.loadModelAsync()
+            print("[ModelManager] warm-up complete")
         }
     }
 
@@ -82,13 +113,17 @@ final class ModelManager {
         guard !isDownloading else { return }
 
         // Check if the model is already on disk (e.g. installed by the
-        // conversion script or a previous session). Skip the download.
+        // conversion script or a previous session). Skip the download only
+        // when the on-disk version matches what the app currently expects;
+        // otherwise we re-download to pick up fixes.
         let existing = Self.modelsDirectory.appendingPathComponent(Self.compiledModelName)
-        if FileManager.default.fileExists(atPath: existing.path) {
+        if FileManager.default.fileExists(atPath: existing.path),
+           installedModelVersion == Self.currentModelVersion {
             status = .ready
             if !UserDefaults.standard.bool(forKey: Self.prefKey) {
                 useAdvancedModel = true
             }
+            warmUp()
             print("[ModelManager] Model already on disk, skipping download")
             return
         }
@@ -149,16 +184,29 @@ final class ModelManager {
 
     // MARK: - Refresh / check
 
-    /// Re-scans the models directory for the compiled model.
+    /// Re-scans the models directory for the compiled model. If an older
+    /// version of the model is found on disk (mismatching `currentModelVersion`),
+    /// it is removed so the app can re-download the corrected build — users
+    /// who installed the v1 model had a cutout with missing ImageNet
+    /// normalization and need the v2 asset.
     func refresh() {
         cachedModel = nil
         let file = Self.modelsDirectory.appendingPathComponent(Self.compiledModelName)
         if FileManager.default.fileExists(atPath: file.path) {
+            if installedModelVersion != Self.currentModelVersion {
+                print("[ModelManager] Installed model version '\(installedModelVersion ?? "unknown")' " +
+                      "does not match expected '\(Self.currentModelVersion)' — removing for re-download")
+                try? FileManager.default.removeItem(at: file)
+                try? FileManager.default.removeItem(at: Self.versionSidecarURL)
+                status = .notInstalled
+                return
+            }
             status = .ready
             if !UserDefaults.standard.bool(forKey: Self.prefKey) {
                 useAdvancedModel = true
             }
-            print("[ModelManager] Model found at: \(file.path)")
+            print("[ModelManager] Model found at: \(file.path) (version \(Self.currentModelVersion))")
+            warmUp()
         } else {
             status = .notInstalled
             print("[ModelManager] Model not found at: \(file.path)")
@@ -169,6 +217,7 @@ final class ModelManager {
     func deleteModel() {
         let file = Self.modelsDirectory.appendingPathComponent(Self.compiledModelName)
         try? FileManager.default.removeItem(at: file)
+        try? FileManager.default.removeItem(at: Self.versionSidecarURL)
         cachedModel = nil
         status = .notInstalled
         useAdvancedModel = false
@@ -194,7 +243,13 @@ final class ModelManager {
     init() {
         let file = Self.modelsDirectory.appendingPathComponent(Self.compiledModelName)
         if FileManager.default.fileExists(atPath: file.path) {
-            status = .ready
+            if installedModelVersion == Self.currentModelVersion {
+                status = .ready
+                warmUp()
+            } else {
+                print("[ModelManager] Stale model version on disk — scheduling refresh")
+                Task { @MainActor [weak self] in self?.refresh() }
+            }
         }
     }
 
@@ -210,9 +265,35 @@ final class ModelManager {
     /// The compiled CoreML model directory name.
     static let compiledModelName = "BiRefNet.mlmodelc"
 
-    /// URL of the pre-compiled model archive.
-    /// Update this after hosting the converted model (e.g. GitHub Release).
-    static let modelDownloadURL = URL(string: "https://github.com/thierrzz/Avatar/releases/download/birefnet-v1/BiRefNet.mlmodelc.zip")!
+    /// Identifier for the expected model build. Bumped whenever the released
+    /// `.mlmodelc` changes (new weights, new preprocessing, etc.). Existing
+    /// users with a mismatching install will be auto-migrated on launch.
+    /// v2 swaps the generic DIS BiRefNet weights for the portrait fine-tune
+    /// and bakes ImageNet normalization into the CoreML input.
+    static let currentModelVersion = "v2"
+
+    /// Filename of the version sidecar written next to the .mlmodelc on install.
+    private static let versionSidecarName = ".model_version"
+
+    private static var versionSidecarURL: URL {
+        modelsDirectory.appendingPathComponent(versionSidecarName)
+    }
+
+    /// URL of the pre-compiled model archive. Bumping the path component
+    /// (e.g. `birefnet-v2`) isolates each release so existing v1 users who
+    /// migrate don't hit cached CDN copies of the old build.
+    static let modelDownloadURL = URL(string: "https://github.com/thierrzz/Avatar/releases/download/birefnet-\(currentModelVersion)/BiRefNet.mlmodelc.zip")!
+
+    /// Reads the version string written into the models directory at install
+    /// time. Returns nil when no sidecar is present (e.g. v1 installs, which
+    /// predate version tracking).
+    private var installedModelVersion: String? {
+        guard let data = try? Data(contentsOf: Self.versionSidecarURL),
+              let s = String(data: data, encoding: .utf8)?
+                  .trimmingCharacters(in: .whitespacesAndNewlines),
+              !s.isEmpty else { return nil }
+        return s
+    }
 
     static var modelsDirectory: URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory,
@@ -252,7 +333,11 @@ final class ModelManager {
                           userInfo: [NSLocalizedDescriptionKey:
                                         Loc.modelNotFoundAfterExtract])
         }
-        print("[ModelManager] Extracted model to: \(destDir.path)")
+        // Stamp the install with the current model version so future launches
+        // can detect and auto-migrate stale builds.
+        try? Self.currentModelVersion.write(to: Self.versionSidecarURL,
+                                            atomically: true, encoding: .utf8)
+        print("[ModelManager] Extracted model to: \(destDir.path) (version \(Self.currentModelVersion))")
     }
 }
 

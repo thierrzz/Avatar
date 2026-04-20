@@ -68,42 +68,51 @@ enum PortraitDropHandler {
 enum ImportFlow {
     /// Reads a portrait file from disk, runs subject-lift + face detection,
     /// computes auto-alignment, and inserts a new Portrait into SwiftData.
+    /// File I/O, image decode, and the BiRefNet model load all happen on a
+    /// background task so the main thread stays responsive during large
+    /// HEIC/PNG reads and the first-time Neural Engine compile.
     static func importFile(url: URL, context: ModelContext, appState: AppState,
                            modelManager: ModelManager? = nil) {
-        // Set processing state IMMEDIATELY so the user sees feedback while the
-        // file is being read and Vision is warming up.
         appState.isProcessing = true
         appState.lastError = nil
-
         print("[Import] start url=\(url.path)")
 
-        // Sandboxed drag-and-drop URLs require explicit security-scope access.
-        let needsScope = url.startAccessingSecurityScopedResource()
-        defer { if needsScope { url.stopAccessingSecurityScopedResource() } }
-
-        let data: Data
-        do {
-            data = try Data(contentsOf: url)
-        } catch {
-            appState.lastError = Loc.cannotReadFile(error.localizedDescription)
-            appState.isProcessing = false
-            print("[Import] FAILED Data(contentsOf:) error=\(error)")
-            return
-        }
-        print("[Import] read bytes=\(data.count)")
-
-        guard let cg = ImageProcessor.cgImage(from: data) else {
-            appState.lastError = Loc.cannotDecodeImage
-            appState.isProcessing = false
-            print("[Import] FAILED CGImage decode (data was \(data.count) bytes)")
-            return
-        }
-        print("[Import] loaded CGImage \(cg.width)x\(cg.height)")
+        let useAdvanced = modelManager?.useAdvancedModel == true
         let suggestedName = url.deletingPathExtension().lastPathComponent
 
-        let birefnet = (modelManager?.useAdvancedModel == true) ? modelManager?.loadModel() : nil
-        runPipeline(cg: cg, originalData: data, suggestedName: suggestedName,
-                    context: context, appState: appState, birefnetModel: birefnet)
+        Task.detached(priority: .userInitiated) {
+            // Re-anchor the security-scoped access on the background thread
+            // that will actually read the file.
+            let needsScope = url.startAccessingSecurityScopedResource()
+            defer { if needsScope { url.stopAccessingSecurityScopedResource() } }
+
+            let data: Data
+            do {
+                data = try Data(contentsOf: url)
+            } catch {
+                await MainActor.run {
+                    appState.lastError = Loc.cannotReadFile(error.localizedDescription)
+                    appState.isProcessing = false
+                    print("[Import] FAILED Data(contentsOf:) error=\(error)")
+                }
+                return
+            }
+            print("[Import] read bytes=\(data.count)")
+
+            guard let cg = ImageProcessor.cgImage(from: data) else {
+                await MainActor.run {
+                    appState.lastError = Loc.cannotDecodeImage
+                    appState.isProcessing = false
+                    print("[Import] FAILED CGImage decode (data was \(data.count) bytes)")
+                }
+                return
+            }
+            print("[Import] loaded CGImage \(cg.width)x\(cg.height)")
+
+            let birefnet: MLModel? = useAdvanced ? await modelManager?.loadModelAsync() : nil
+            await runPipeline(cg: cg, originalData: data, suggestedName: suggestedName,
+                              context: context, appState: appState, birefnetModel: birefnet)
+        }
     }
 
     /// Variant for when raw image bytes are already in memory (e.g. dragged from
@@ -115,15 +124,21 @@ enum ImportFlow {
         appState.lastError = nil
         print("[Import] start data bytes=\(data.count)")
 
-        guard let cg = ImageProcessor.cgImage(from: data) else {
-            appState.lastError = Loc.cannotDecodeImage
-            appState.isProcessing = false
-            print("[Import] FAILED CGImage decode from raw data")
-            return
+        let useAdvanced = modelManager?.useAdvancedModel == true
+
+        Task.detached(priority: .userInitiated) {
+            guard let cg = ImageProcessor.cgImage(from: data) else {
+                await MainActor.run {
+                    appState.lastError = Loc.cannotDecodeImage
+                    appState.isProcessing = false
+                    print("[Import] FAILED CGImage decode from raw data")
+                }
+                return
+            }
+            let birefnet: MLModel? = useAdvanced ? await modelManager?.loadModelAsync() : nil
+            await runPipeline(cg: cg, originalData: data, suggestedName: suggestedName,
+                              context: context, appState: appState, birefnetModel: birefnet)
         }
-        let birefnet = (modelManager?.useAdvancedModel == true) ? modelManager?.loadModel() : nil
-        runPipeline(cg: cg, originalData: data, suggestedName: suggestedName,
-                    context: context, appState: appState, birefnetModel: birefnet)
     }
 
     /// Re-runs the cutout pipeline on an existing portrait, overwriting the
@@ -146,11 +161,12 @@ enum ImportFlow {
         appState.lastError = nil
         print("[Reprocess] start id=\(portrait.id) \(cg.width)x\(cg.height)")
 
-        // Load the advanced model on the main thread before dispatching.
-        let birefnet = (modelManager?.useAdvancedModel == true) ? modelManager?.loadModel() : nil
-
+        let useAdvanced = modelManager?.useAdvancedModel == true
         let portraitID = portrait.id
         Task.detached(priority: .userInitiated) {
+            // Load the advanced model off the main thread — the first-time
+            // Neural Engine compile otherwise freezes the UI.
+            let birefnet: MLModel? = useAdvanced ? await modelManager?.loadModelAsync() : nil
             do {
                 let processed = try ImageProcessor.process(image: cg, birefnetModel: birefnet)
                 let pngData = ImageProcessor.pngData(from: processed.cutout) ?? Data()
@@ -217,10 +233,10 @@ enum ImportFlow {
         appState.lastError = nil
         print("[Upscale] start id=\(portrait.id) \(cg.width)×\(cg.height)")
 
-        let birefnet = (modelManager?.useAdvancedModel == true) ? modelManager?.loadModel() : nil
-
+        let useAdvanced = modelManager?.useAdvancedModel == true
         let portraitID = portrait.id
         Task.detached(priority: .userInitiated) {
+            let birefnet: MLModel? = useAdvanced ? await modelManager?.loadModelAsync() : nil
             do {
                 // 1. Upscale the original image (2× Lanczos + sharpen + denoise)
                 guard let upscaled = ImageProcessor.upscale(image: cg) else {
@@ -407,59 +423,62 @@ enum ImportFlow {
 
     // MARK: - Import Pipeline
 
-    private static func runPipeline(cg: CGImage, originalData data: Data,
-                                    suggestedName: String,
-                                    context: ModelContext, appState: AppState,
-                                    birefnetModel: MLModel? = nil) {
-        Task.detached(priority: .userInitiated) {
-            do {
-                let processed = try ImageProcessor.process(image: cg, birefnetModel: birefnetModel)
-                let cutoutSize = CGSize(width: processed.cutout.width, height: processed.cutout.height)
-                let face = processed.faceRect ?? .zero
-                print("[Import] subject lift OK cutout=\(processed.cutout.width)x\(processed.cutout.height) face=\(face)")
+    /// Runs the cutout + auto-align pipeline and inserts a Portrait. Must be
+    /// called from a background context (the ImageProcessor work is CPU/ANE
+    /// heavy); it hops back to the main actor only for the SwiftData write.
+    nonisolated private static func runPipeline(
+        cg: CGImage, originalData data: Data,
+        suggestedName: String,
+        context: ModelContext, appState: AppState,
+        birefnetModel: MLModel? = nil
+    ) async {
+        do {
+            let processed = try ImageProcessor.process(image: cg, birefnetModel: birefnetModel)
+            let cutoutSize = CGSize(width: processed.cutout.width, height: processed.cutout.height)
+            let face = processed.faceRect ?? .zero
+            print("[Import] subject lift OK cutout=\(processed.cutout.width)x\(processed.cutout.height) face=\(face)")
 
-                let bodyBottom = processed.bodyBottomY
-                let transform = (processed.faceRect != nil)
-                    ? AutoAligner.computeTransform(
-                        faceRect: face,
-                        eyeCenter: processed.eyeCenter,
-                        interEyeDistance: processed.interEyeDistance,
-                        cutoutSize: cutoutSize,
-                        bodyBottomY: bodyBottom)
-                    : AutoAligner.fitTransform(cutoutSize: cutoutSize)
-                print("[Import] transform scale=\(transform.scale) offset=\(transform.offset) bodyBottom=\(bodyBottom) eyes=\(processed.eyeCenter as Any) IPD=\(processed.interEyeDistance as Any)")
+            let bodyBottom = processed.bodyBottomY
+            let transform = (processed.faceRect != nil)
+                ? AutoAligner.computeTransform(
+                    faceRect: face,
+                    eyeCenter: processed.eyeCenter,
+                    interEyeDistance: processed.interEyeDistance,
+                    cutoutSize: cutoutSize,
+                    bodyBottomY: bodyBottom)
+                : AutoAligner.fitTransform(cutoutSize: cutoutSize)
+            print("[Import] transform scale=\(transform.scale) offset=\(transform.offset) bodyBottom=\(bodyBottom) eyes=\(processed.eyeCenter as Any) IPD=\(processed.interEyeDistance as Any)")
 
-                let pngData = ImageProcessor.pngData(from: processed.cutout) ?? Data()
-                print("[Import] PNG encoded bytes=\(pngData.count)")
-                if pngData.isEmpty {
-                    print("[Import] WARNING pngData is empty — cutout will be invisible!")
-                }
+            let pngData = ImageProcessor.pngData(from: processed.cutout) ?? Data()
+            print("[Import] PNG encoded bytes=\(pngData.count)")
+            if pngData.isEmpty {
+                print("[Import] WARNING pngData is empty — cutout will be invisible!")
+            }
 
-                await MainActor.run {
-                    let portrait = Portrait(
-                        name: suggestedName,
-                        cutoutPNG: pngData,
-                        originalImageData: data,
-                        faceRect: face,
-                        eyeCenter: processed.eyeCenter,
-                        interEyeDistance: Double(processed.interEyeDistance ?? 0),
-                        bodyBottomY: Double(bodyBottom),
-                        offsetX: Double(transform.offset.width),
-                        offsetY: Double(transform.offset.height),
-                        scale: Double(transform.scale)
-                    )
-                    context.insert(portrait)
-                    try? context.save()
-                    appState.selectedPortraitID = portrait.id
-                    appState.isProcessing = false
-                    print("[Import] DONE id=\(portrait.id)")
-                }
-            } catch {
-                await MainActor.run {
-                    appState.lastError = Loc.processingFailed(error.localizedDescription)
-                    appState.isProcessing = false
-                    print("[Import] ERROR \(error)")
-                }
+            await MainActor.run {
+                let portrait = Portrait(
+                    name: suggestedName,
+                    cutoutPNG: pngData,
+                    originalImageData: data,
+                    faceRect: face,
+                    eyeCenter: processed.eyeCenter,
+                    interEyeDistance: Double(processed.interEyeDistance ?? 0),
+                    bodyBottomY: Double(bodyBottom),
+                    offsetX: Double(transform.offset.width),
+                    offsetY: Double(transform.offset.height),
+                    scale: Double(transform.scale)
+                )
+                context.insert(portrait)
+                try? context.save()
+                appState.selectedPortraitID = portrait.id
+                appState.isProcessing = false
+                print("[Import] DONE id=\(portrait.id)")
+            }
+        } catch {
+            await MainActor.run {
+                appState.lastError = Loc.processingFailed(error.localizedDescription)
+                appState.isProcessing = false
+                print("[Import] ERROR \(error)")
             }
         }
     }
