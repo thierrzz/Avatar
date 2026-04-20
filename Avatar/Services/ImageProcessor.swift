@@ -434,10 +434,44 @@ enum ImageProcessor {
             "inputEpsilon": 0.01
         ]).cropped(to: extent)
 
+        // Synthesise a soft hair fringe without a matting model. The
+        // portrait mask is near-bimodal (0 or 1) with a thin stair-step
+        // at the silhouette edge — we keep the fully opaque interior
+        // (via erosion) and only feather the outer ring (via dilation +
+        // blur) so hair gains a photographic falloff but shoulders, face
+        // and shirt stay fully opaque when composited over any
+        // background. Radii scale with the source resolution so the
+        // feather reads consistently on 1024-px previews and 4K imports.
+        let longSide = max(extent.width, extent.height)
+        let scale = max(1.0, longSide / 1024.0)
+        let dilateR = 10.0 * scale
+        let erodeR  = 4.0  * scale
+        let blurR   = 3.0  * scale
+
+        let outerBand = guided
+            .applyingFilter("CIMorphologyMaximum", parameters: [kCIInputRadiusKey: dilateR])
+            .cropped(to: extent)
+        let innerCore = guided
+            .applyingFilter("CIMorphologyMinimum", parameters: [kCIInputRadiusKey: erodeR])
+            .cropped(to: extent)
+        // Ring = outer − inner, marking the pixels we're allowed to feather.
+        let ring = outerBand.applyingFilter("CISubtractBlendMode", parameters: [
+            kCIInputBackgroundImageKey: innerCore
+        ]).cropped(to: extent)
+        let feathered = guided
+            .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: blurR])
+            .cropped(to: extent)
+        // Inside the ring use the blurred mask; outside it keep the
+        // guided (near-bimodal) mask so the body interior stays solid.
+        let softened = feathered.applyingFilter("CIBlendWithMask", parameters: [
+            "inputBackgroundImage": guided,
+            "inputMaskImage": ring
+        ]).cropped(to: extent)
+
         // Composite: original RGB + BiRefNet alpha matte.
         let clearBG = CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 0))
             .cropped(to: extent)
-        let alphaMatte = guided.applyingFilter("CIMaskToAlpha")
+        let alphaMatte = softened.applyingFilter("CIMaskToAlpha")
         let composed = originalCI.applyingFilter("CIBlendWithMask", parameters: [
             "inputBackgroundImage": clearBG,
             "inputMaskImage": alphaMatte
