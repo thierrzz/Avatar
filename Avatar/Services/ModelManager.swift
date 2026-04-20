@@ -272,7 +272,12 @@ final class ModelManager {
     ///   ImageNet normalization into the graph (fixed leaky backgrounds).
     /// - v3: switched from BiRefNet-portrait (segmentation) to
     ///   BiRefNet-matting for continuous alpha on hair strands and fur.
-    static let currentModelVersion = "v3"
+    /// - v4: reverted to BiRefNet-portrait — the matting variant only
+    ///   predicts alpha, not unmixed foreground, so mid-alpha pixels
+    ///   became translucent subject over coloured backgrounds. Hair
+    ///   softness is now synthesised in Swift via a fringe-band feather
+    ///   so we keep the bimodal body mask and still get soft edges.
+    static let currentModelVersion = "v4"
 
     /// Filename of the version sidecar written next to the .mlmodelc on install.
     private static let versionSidecarName = ".model_version"

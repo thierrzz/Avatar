@@ -31,17 +31,19 @@ import subprocess
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 MODEL_NAME = "BiRefNet"
-# Matting variant of BiRefNet — outputs continuous alpha (0.0–1.0 per pixel)
-# trained on alpha-matte ground truth, so hair strands and soft edges stay
-# soft instead of being cut binary. Replaces v2's BiRefNet-portrait, which
-# segmented cleanly but produced hard-edged hair.
-HF_MODEL_ID = "ZhengPeng7/BiRefNet-matting"
+# Portrait segmentation variant — near-bimodal mask (0/1) with a thin
+# hair-fringe band. v3's matting variant was reverted because its
+# continuous-alpha output left subject interiors mid-transparent when
+# composited over coloured backgrounds (it predicts α but not unmixed
+# foreground). We now synthesise soft hair in Swift via a fringe-band
+# feather, so a crisp portrait mask is the right primitive again.
+HF_MODEL_ID = "ZhengPeng7/BiRefNet-portrait"
 INPUT_SIZE = 1024  # BiRefNet expects 1024x1024 input
 
 # Keep in sync with ModelManager.currentModelVersion — written as a sidecar
 # next to the installed .mlmodelc so the app can detect stale builds and
 # re-download on launch.
-MODEL_VERSION = "v3"
+MODEL_VERSION = "v4"
 VERSION_SIDECAR_NAME = ".model_version"
 
 # ImageNet normalization stats BiRefNet was trained with. We bake these into
