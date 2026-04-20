@@ -66,6 +66,21 @@ final class Portrait {
     /// Stores the pre-retouch cutout so Magic Retouch can be toggled off.
     @Attribute(.externalStorage) var preRetouchPNG: Data?
 
+    // MARK: - Pre-upscale snapshot (so Upscale can be toggled off)
+    /// Original (1×) image data captured before Upscale ran.
+    @Attribute(.externalStorage) var preUpscaleOriginalData: Data?
+    /// Cutout PNG captured before Upscale ran.
+    @Attribute(.externalStorage) var preUpscaleCutoutPNG: Data?
+    var preUpscaleFaceRectX: Double = 0
+    var preUpscaleFaceRectY: Double = 0
+    var preUpscaleFaceRectW: Double = 0
+    var preUpscaleFaceRectH: Double = 0
+    var preUpscaleEyeCenterX: Double = 0
+    var preUpscaleEyeCenterY: Double = 0
+    var preUpscaleHasEyes: Bool = false
+    var preUpscaleInterEyeDistance: Double = 0
+    var preUpscaleBodyBottomY: Double = 0
+
     init(
         id: UUID = UUID(),
         name: String = "",

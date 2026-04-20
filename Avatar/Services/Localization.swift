@@ -75,6 +75,7 @@ enum Loc {
            : "Knipt dit portret opnieuw uit met de Apple-pipeline. Positie en schaal blijven behouden."
     }
     static var upscale2x: String       { en ? "Upscale (2x)" : "Opschalen (2x)" }
+    static var undoUpscale: String     { en ? "Undo Upscale" : "Opschalen ongedaan maken" }
     static var alreadyUpscaled: String {
         en ? "This portrait has already been upscaled."
            : "Dit portret is al opgeschaald."
@@ -82,6 +83,10 @@ enum Loc {
     static var upscaleHelp: String {
         en ? "Upscales the original photo to 2× resolution and re-cuts for higher quality."
            : "Schaalt de originele foto op naar 2× resolutie en knipt opnieuw uit voor hogere kwaliteit."
+    }
+    static var undoUpscaleHelp: String {
+        en ? "Revert to the original (non-upscaled) photo."
+           : "Herstel naar de originele (niet-opgeschaalde) foto."
     }
     static var magicRetouchDone: String { "Magic Retouch ✓" }
     static var magicRetouch: String    { "Magic Retouch" }

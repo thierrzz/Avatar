@@ -542,13 +542,19 @@ struct EditorView: View {
             }
 
             enhanceCard(
-                title: Loc.upscale2x,
-                systemImage: "arrow.up.left.and.arrow.down.right",
-                disabled: portrait.isUpscaled || portrait.originalImageData == nil || appState.isProcessing,
-                help: portrait.isUpscaled ? Loc.alreadyUpscaled : Loc.upscaleHelp
+                title: portrait.isUpscaled ? Loc.undoUpscale : Loc.upscale2x,
+                systemImage: portrait.isUpscaled ? "arrow.uturn.backward" : "arrow.up.left.and.arrow.down.right",
+                disabled: portrait.originalImageData == nil || appState.isProcessing
+                    || (portrait.isUpscaled && portrait.preUpscaleOriginalData == nil),
+                help: portrait.isUpscaled ? Loc.undoUpscaleHelp : Loc.upscaleHelp,
+                active: portrait.isUpscaled
             ) {
-                ImportFlow.upscale(portrait: portrait, context: context, appState: appState,
-                                   modelManager: modelManager)
+                if portrait.isUpscaled {
+                    ImportFlow.undoUpscale(portrait: portrait, context: context, appState: appState)
+                } else {
+                    ImportFlow.upscale(portrait: portrait, context: context, appState: appState,
+                                       modelManager: modelManager)
+                }
             }
 
             enhanceCard(

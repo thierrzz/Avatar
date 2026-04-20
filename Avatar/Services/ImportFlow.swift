@@ -255,6 +255,23 @@ enum ImportFlow {
                         appState.lastError = Loc.portraitNotFound
                         return
                     }
+                    // Snapshot pre-upscale state so Upscale can be toggled off.
+                    fresh.preUpscaleOriginalData = fresh.originalImageData
+                    fresh.preUpscaleCutoutPNG = fresh.cutoutPNG
+                    fresh.preUpscaleFaceRectX = fresh.faceRectX
+                    fresh.preUpscaleFaceRectY = fresh.faceRectY
+                    fresh.preUpscaleFaceRectW = fresh.faceRectW
+                    fresh.preUpscaleFaceRectH = fresh.faceRectH
+                    if let eye = fresh.eyeCenter {
+                        fresh.preUpscaleEyeCenterX = Double(eye.x)
+                        fresh.preUpscaleEyeCenterY = Double(eye.y)
+                        fresh.preUpscaleHasEyes = true
+                    } else {
+                        fresh.preUpscaleHasEyes = false
+                    }
+                    fresh.preUpscaleInterEyeDistance = fresh.interEyeDistance
+                    fresh.preUpscaleBodyBottomY = fresh.bodyBottomY
+
                     // Update original with upscaled version
                     fresh.originalImageData = upscaledData
                     fresh.cutoutPNG = pngData
@@ -284,6 +301,43 @@ enum ImportFlow {
                 }
             }
         }
+    }
+
+    /// Reverts an Upscale by restoring the pre-upscale snapshot (original data,
+    /// cutout, face metrics) and doubling the manual scale back to compensate.
+    static func undoUpscale(portrait: Portrait, context: ModelContext, appState: AppState) {
+        guard portrait.isUpscaled,
+              let origData = portrait.preUpscaleOriginalData,
+              let cutoutData = portrait.preUpscaleCutoutPNG else {
+            return
+        }
+        portrait.originalImageData = origData
+        portrait.cutoutPNG = cutoutData
+        portrait.faceRectX = portrait.preUpscaleFaceRectX
+        portrait.faceRectY = portrait.preUpscaleFaceRectY
+        portrait.faceRectW = portrait.preUpscaleFaceRectW
+        portrait.faceRectH = portrait.preUpscaleFaceRectH
+        if portrait.preUpscaleHasEyes {
+            portrait.eyeCenterX = portrait.preUpscaleEyeCenterX
+            portrait.eyeCenterY = portrait.preUpscaleEyeCenterY
+        } else {
+            portrait.eyeCenterX = 0
+            portrait.eyeCenterY = 0
+        }
+        portrait.interEyeDistance = portrait.preUpscaleInterEyeDistance
+        portrait.bodyBottomY = portrait.preUpscaleBodyBottomY
+        // Restore the visual scale (was halved when we upscaled).
+        portrait.scale *= 2.0
+        portrait.isUpscaled = false
+        // Magic Retouch was cleared at upscale time; pre-upscale cutout is raw.
+        portrait.isMagicRetouched = false
+        portrait.preRetouchPNG = nil
+        // Drop the snapshot — re-running Upscale will take a fresh one.
+        portrait.preUpscaleOriginalData = nil
+        portrait.preUpscaleCutoutPNG = nil
+        portrait.updatedAt = Date()
+        try? context.save()
+        appState.invalidateCutout(for: portrait)
     }
 
     // MARK: - Magic Retouch
