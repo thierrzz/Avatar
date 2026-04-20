@@ -268,9 +268,11 @@ final class ModelManager {
     /// Identifier for the expected model build. Bumped whenever the released
     /// `.mlmodelc` changes (new weights, new preprocessing, etc.). Existing
     /// users with a mismatching install will be auto-migrated on launch.
-    /// v2 swaps the generic DIS BiRefNet weights for the portrait fine-tune
-    /// and bakes ImageNet normalization into the CoreML input.
-    static let currentModelVersion = "v2"
+    /// - v2: swapped generic DIS weights for BiRefNet-portrait and baked
+    ///   ImageNet normalization into the graph (fixed leaky backgrounds).
+    /// - v3: switched from BiRefNet-portrait (segmentation) to
+    ///   BiRefNet-matting for continuous alpha on hair strands and fur.
+    static let currentModelVersion = "v3"
 
     /// Filename of the version sidecar written next to the .mlmodelc on install.
     private static let versionSidecarName = ".model_version"

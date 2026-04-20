@@ -31,16 +31,17 @@ import subprocess
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 MODEL_NAME = "BiRefNet"
-# Portrait fine-tune of BiRefNet — trained specifically on human subjects so
-# face/hair/shoulder edges hold up far better than the generic DIS checkpoint
-# we shipped in v1.
-HF_MODEL_ID = "ZhengPeng7/BiRefNet-portrait"
+# Matting variant of BiRefNet — outputs continuous alpha (0.0–1.0 per pixel)
+# trained on alpha-matte ground truth, so hair strands and soft edges stay
+# soft instead of being cut binary. Replaces v2's BiRefNet-portrait, which
+# segmented cleanly but produced hard-edged hair.
+HF_MODEL_ID = "ZhengPeng7/BiRefNet-matting"
 INPUT_SIZE = 1024  # BiRefNet expects 1024x1024 input
 
 # Keep in sync with ModelManager.currentModelVersion — written as a sidecar
 # next to the installed .mlmodelc so the app can detect stale builds and
 # re-download on launch.
-MODEL_VERSION = "v2"
+MODEL_VERSION = "v3"
 VERSION_SIDECAR_NAME = ".model_version"
 
 # ImageNet normalization stats BiRefNet was trained with. We bake these into
@@ -154,12 +155,12 @@ def convert_to_coreml(output_dir: str):
     )
 
     # Set model metadata
-    mlmodel.author = "ZhengPeng7 (BiRefNet-portrait) — converted for Avatar"
+    mlmodel.author = "ZhengPeng7 (BiRefNet-matting) — converted for Avatar"
     mlmodel.license = "MIT"
     mlmodel.short_description = (
-        "BiRefNet-portrait: portrait fine-tune of BiRefNet for high-"
-        "resolution person segmentation with ImageNet normalization baked "
-        "into the graph. Alpha matte for hair and fine edge detail."
+        "BiRefNet-matting: matting variant of BiRefNet producing continuous "
+        "alpha for soft hair strands and fur, with ImageNet normalization "
+        "baked into the graph."
     )
 
     mlpackage_path = os.path.join(output_dir, f"{MODEL_NAME}.mlpackage")
