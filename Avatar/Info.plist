@@ -65,6 +65,14 @@
 			<key>CFBundleURLName</key>
 			<string>Google Sign-In</string>
 		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>avatar</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>nl.avatar.join</string>
+		</dict>
 	</array>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.photography</string>

@@ -7,8 +7,15 @@ struct AvatarApp: App {
     @State private var appState = AppState()
     @State private var updater = UpdateManager()
     @State private var modelManager = ModelManager()
-    @State private var googleAuth = GoogleAuthService()
+    @State private var googleAuth: GoogleAuthService
+    @State private var syncEngine: SyncEngine
     @State private var showExportSheet = false
+
+    init() {
+        let auth = GoogleAuthService()
+        _googleAuth = State(initialValue: auth)
+        _syncEngine = State(initialValue: SyncEngine(authService: auth))
+    }
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -33,7 +40,7 @@ struct AvatarApp: App {
                 .environment(updater)
                 .environment(modelManager)
                 .environment(googleAuth)
-                .environment(SyncEngine(authService: googleAuth))
+                .environment(syncEngine)
                 // Minimum ensures the library sidebar (~200), canvas (~280)
                 // and inspector (~320) all have enough room to display
                 // their content without truncation.
@@ -56,6 +63,16 @@ struct AvatarApp: App {
                 .onOpenURL { url in
                     if url.pathExtension.lowercased() == "avatarlib" {
                         appState.libraryImportURL = url
+                        return
+                    }
+                    if let join = PendingJoin(url: url) {
+                        handleJoin(join)
+                    }
+                }
+                .onChange(of: googleAuth.isSignedIn) { _, signedIn in
+                    if signedIn, let join = appState.pendingJoin {
+                        appState.pendingJoin = nil
+                        runJoin(join)
                     }
                 }
         }
@@ -82,6 +99,31 @@ struct AvatarApp: App {
                 .environment(modelManager)
                 .modelContainer(sharedModelContainer)
                 .id(appState.language)
+        }
+    }
+
+    private func handleJoin(_ join: PendingJoin) {
+        if googleAuth.isSignedIn {
+            runJoin(join)
+        } else {
+            appState.pendingJoin = join
+        }
+    }
+
+    private func runJoin(_ join: PendingJoin) {
+        let context = sharedModelContainer.mainContext
+        Task { @MainActor in
+            do {
+                let workspace = try await syncEngine.joinWorkspace(
+                    folderID: join.folderID,
+                    folderName: join.name,
+                    context: context
+                )
+                appState.selectedWorkspaceID = workspace.id
+                appState.selectedPortraitIDs.removeAll()
+            } catch {
+                appState.lastError = error.localizedDescription
+            }
         }
     }
 

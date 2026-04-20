@@ -6,6 +6,23 @@ enum SettingsTab: String {
     case backgrounds, exportPresets, aiModel, updates, language
 }
 
+/// Parsed payload of an `avatar://join?folderID=…&name=…` deep link.
+struct PendingJoin: Equatable {
+    let folderID: String
+    let name: String
+
+    init?(url: URL) {
+        guard url.scheme == "avatar",
+              url.host == "join",
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              let folderID = items.first(where: { $0.name == "folderID" })?.value,
+              !folderID.isEmpty
+        else { return nil }
+        self.folderID = folderID
+        self.name = items.first(where: { $0.name == "name" })?.value ?? "Shared workspace"
+    }
+}
+
 @MainActor
 @Observable
 final class AppState {
@@ -65,6 +82,10 @@ final class AppState {
 
     /// When set, the main window presents the library import sheet for this URL.
     var libraryImportURL: URL?
+
+    /// A workspace-join intent received via an `avatar://join` deep link
+    /// while the user wasn't signed in. Drained when sign-in completes.
+    var pendingJoin: PendingJoin?
 
     /// Which tab to select when the Settings window opens.
     var selectedSettingsTab: SettingsTab = .backgrounds
