@@ -166,8 +166,8 @@ struct EditorView: View {
                         .transition(.opacity)
                 }
             }
-            .animation(.easeInOut(duration: 0.15), value: isDropping)
-            .animation(.easeInOut(duration: 0.15), value: appState.isProcessing)
+            .animation(.easeOut(duration: 0.15), value: isDropping)
+            .animation(.easeOut(duration: 0.15), value: appState.isProcessing)
     }
 
     // MARK: - Canvas
@@ -363,7 +363,7 @@ struct EditorView: View {
 
     private var controlsPanel: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $editorTab.animation(.easeInOut(duration: 0.18))) {
+            Picker("", selection: $editorTab) {
                 ForEach(EditorTab.allCases) { tab in
                     Text(tab.label).tag(tab)
                 }
@@ -571,6 +571,9 @@ struct EditorView: View {
                 }
             }
 
+            // MARK: Extend Body (Pro feature)
+            extendBodyCard
+
             if !modelManager.isAvailable && !modelManager.hintDismissed {
                 AdvancedModelHint(modelManager: modelManager)
             }
@@ -586,6 +589,7 @@ struct EditorView: View {
         disabled: Bool,
         help: String,
         active: Bool = false,
+        showProBadge: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -600,16 +604,83 @@ struct EditorView: View {
                             .fill(active ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.12))
                     )
                     .symbolEffect(.bounce, value: active)
+                    .overlay(alignment: .topTrailing) {
+                        if showProBadge {
+                            ProBadge()
+                                .offset(x: 8, y: -6)
+                        }
+                    }
                 Text(title)
                     .fontWeight(.medium)
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableButtonStyle())
         .disabled(disabled)
         .opacity(disabled ? 0.45 : 1)
         .help(help)
+    }
+
+    // MARK: Extend Body (Pro feature)
+
+    /// Auto-detect: body is considered "cropped" when the lowest body pixel
+    /// sits within a small tolerance of the cutout's bottom edge.
+    private var bodyNeedsExtension: Bool {
+        let h = cutoutSize.height
+        guard h > 0, portrait.bodyBottomY > 0 else { return false }
+        return portrait.bodyBottomY >= Double(h) - 4
+    }
+
+    /// `true` when the user should see the paywall on tap (not signed in, no
+    /// subscription, or out of credits). Pro users with credits go straight
+    /// to the outpaint action.
+    private var extendBodyNeedsUpgrade: Bool {
+        !appState.proEntitlement.isPro || !appState.proEntitlement.hasCredits
+    }
+
+    @ViewBuilder
+    private var extendBodyCard: some View {
+        let isExtended = portrait.isBodyExtended
+        let hasCutout = portrait.cutoutPNG != nil
+        // Pro users: disable when cutout exists but body is already complete
+        // (no work to do). Non-pro users: always clickable so the paywall can
+        // sell them the feature.
+        let disabled = !hasCutout
+            || appState.isProcessing
+            || (isExtended && portrait.preExtendBodyCutoutPNG == nil)
+            || (!extendBodyNeedsUpgrade && !bodyNeedsExtension && !isExtended)
+
+        let help: String = {
+            if !hasCutout { return Loc.extendBodyNoCutout }
+            if !appState.auth.isSignedIn { return Loc.extendBodyRequiresSignIn }
+            if isExtended { return Loc.extendBodyUndoHelp }
+            if !bodyNeedsExtension && !extendBodyNeedsUpgrade {
+                return Loc.extendBodyAlreadyComplete
+            }
+            return Loc.extendBodyHelp
+        }()
+
+        enhanceCard(
+            title: isExtended ? Loc.extendBodyUndo : Loc.extendBody,
+            systemImage: isExtended ? "arrow.uturn.backward" : "person.crop.rectangle.badge.plus",
+            disabled: disabled,
+            help: help,
+            active: isExtended,
+            showProBadge: extendBodyNeedsUpgrade && !isExtended
+        ) {
+            if isExtended {
+                ImportFlow.undoExtendBody(portrait: portrait, context: context, appState: appState)
+            } else if !appState.auth.isSignedIn {
+                appState.showSignInPrompt = true
+                appState.showProUpgradeSheet = true
+            } else if extendBodyNeedsUpgrade {
+                appState.showProUpgradeSheet = true
+            } else {
+                ImportFlow.extendBody(portrait: portrait, context: context, appState: appState,
+                                      modelManager: modelManager)
+            }
+        }
     }
 
     // MARK: Adjust tab
@@ -626,7 +697,7 @@ struct EditorView: View {
 
             if isAdjustmentsDirty {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { resetAdjustments() }
+                    withAnimation(.easeOut(duration: 0.18)) { resetAdjustments() }
                 } label: {
                     Label(Loc.resetAdjustments, systemImage: "arrow.counterclockwise")
                 }
@@ -670,13 +741,13 @@ struct EditorView: View {
                     .fill(Color.accentColor)
                     .frame(width: 6, height: 6)
                     .opacity(isDirty ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.15), value: isDirty)
+                    .animation(.easeOut(duration: 0.12), value: isDirty)
                 Spacer()
                 Text(String(format: "%+.0f", (value.wrappedValue - neutral) * displayScale))
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .opacity(isDirty ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.15), value: isDirty)
+                    .animation(.easeOut(duration: 0.12), value: isDirty)
             }
             ZStack {
                 Slider(
@@ -707,7 +778,7 @@ struct EditorView: View {
                         .fill(Color.secondary.opacity(isDirty ? 0 : 0.55))
                         .frame(width: 1.5, height: 6)
                         .position(x: geo.size.width * fraction, y: geo.size.height / 2)
-                        .animation(.easeInOut(duration: 0.15), value: isDirty)
+                        .animation(.easeOut(duration: 0.12), value: isDirty)
                 }
                 .allowsHitTesting(false)
             }
@@ -866,7 +937,7 @@ struct BoundingBoxOverlay: View {
                     }
                 }
                 .opacity(isVisible ? 1 : 0)
-                .animation(.easeInOut(duration: 0.15), value: isVisible)
+                .animation(.easeOut(duration: 0.12), value: isVisible)
             }
         }
         // Stable coordinate space for handle drag gestures — prevents
@@ -1091,7 +1162,7 @@ struct AlignmentGuideOverlay: View {
             .compositingGroup()
             .shadow(color: .black.opacity(0.25), radius: 1)
             .opacity(isVisible ? 1 : 0)
-            .animation(.easeInOut(duration: 0.2), value: isVisible)
+            .animation(.easeOut(duration: 0.15), value: isVisible)
         }
         .allowsHitTesting(false)
     }
@@ -1143,21 +1214,13 @@ private struct NewPhotoDropOverlay: View {
 }
 
 /// Shown while ImportFlow is processing a freshly-dropped photo on the editor.
-/// LibraryView shows its own spinner, but the editor surface needs feedback too
-/// since the user's eyes are here when they drop.
+/// Uses the shared ProcessingStatusView so both the drop zone and the editor
+/// cycle through the same playful status messages.
 private struct ProcessingOverlay: View {
     var body: some View {
         ZStack {
             Color.black.opacity(0.05)
-            VStack(spacing: 12) {
-                ProgressView().controlSize(.large)
-                Text(Loc.processingPhoto)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(24)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            ProcessingStatusView()
         }
     }
 }
@@ -1203,7 +1266,7 @@ struct AdvancedModelHint: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableButtonStyle())
         }
         .padding(10)
         .background(
@@ -1396,6 +1459,7 @@ struct BackgroundChip: View {
     @State private var isHovering = false
     @State private var isRenaming = false
     @State private var editName: String = ""
+    @State private var isPressed = false
     @Environment(\.modelContext) private var context
 
     var body: some View {
@@ -1417,18 +1481,25 @@ struct BackgroundChip: View {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(isSelected ? Color.accentColor : Color.secondary.opacity(0.3),
                                       lineWidth: isSelected ? 2.5 : 1)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isSelected)
+                        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isSelected)
                 }
                 .scaleEffect(isSelected ? 1.04 : 1.0)
-                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isSelected)
+                .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isSelected)
                 .shadow(color: .black.opacity(isSelected ? 0.18 : 0.06),
                         radius: isSelected ? 6 : 2, y: isSelected ? 3 : 1)
                 .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                        onSelect()
-                    }
-                }
+                .scaleEffect(isPressed ? 0.97 : 1.0)
+                .animation(.easeOut(duration: 0.12), value: isPressed)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in if !isPressed { isPressed = true } }
+                        .onEnded { _ in
+                            isPressed = false
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                onSelect()
+                            }
+                        }
+                )
                 .contextMenu { menuContents }
 
                 if isSelected {
@@ -1547,7 +1618,7 @@ struct AddBackgroundButton: View {
                 }
                 .frame(width: 72, height: 72)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableButtonStyle())
             .popover(isPresented: $showPopover, arrowEdge: .top) {
                 popoverContents
             }
@@ -1570,7 +1641,7 @@ struct AddBackgroundButton: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableButtonStyle())
 
             Divider()
 
@@ -1592,7 +1663,7 @@ struct AddBackgroundButton: View {
                                 Circle().strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
                             }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableButtonStyle())
                     .help(item.0)
                 }
             }

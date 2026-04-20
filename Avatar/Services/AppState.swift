@@ -17,6 +17,39 @@ final class AppState {
     /// Which tab to select when the Settings window opens.
     var selectedSettingsTab: SettingsTab = .backgrounds
 
+    // MARK: - Pro / Extend Body
+    /// Supabase-backed auth facade. Also used by `BackendClient`.
+    let auth: AuthManager = AuthManager()
+    /// Pro tier + credits balance. Populated by `BackendClient.me()`.
+    let proEntitlement: ProEntitlement = ProEntitlement()
+    /// Controls the paywall sheet. Set to `true` to open `ProUpgradeSheet`.
+    var showProUpgradeSheet: Bool = false
+    /// Set when a feature requires sign-in and the user isn't signed in.
+    var showSignInPrompt: Bool = false
+    /// Backend REST client. Bound to the shared `AuthManager` so calls and
+    /// sign-in flow see the same token storage.
+    @ObservationIgnored
+    private(set) lazy var backend: BackendClient = BackendClient(auth: auth)
+
+    /// Fetches the latest entitlement from the backend. Silent on network
+    /// errors — keeps whatever state was previously cached.
+    func refreshEntitlement() {
+        guard auth.isSignedIn else {
+            proEntitlement.clear()
+            return
+        }
+        proEntitlement.isRefreshing = true
+        Task {
+            do {
+                let me = try await backend.me()
+                proEntitlement.apply(me)
+            } catch {
+                proEntitlement.lastError = (error as? LocalizedError)?.errorDescription
+            }
+            proEntitlement.isRefreshing = false
+        }
+    }
+
     /// Display language. Changing this re-renders all views that read it,
     /// and `Loc` picks up the new value from UserDefaults.
     var language: Lang = Lang.current {

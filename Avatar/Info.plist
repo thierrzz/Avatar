@@ -42,5 +42,16 @@
 	<string>iSKu+XIaNe3MhrEGij3zPVOqKvDuU+U1cz+NA2tJ4eU=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>nl.avatar.app.scheme</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>aaavatar</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

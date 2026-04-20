@@ -106,6 +106,96 @@ enum Loc {
            : "Herstel de originele uitknip zonder Magic Retouch."
     }
 
+    // MARK: Editor – Extend Body (Pro)
+    static var extendBody: String           { en ? "Extend Body" : "Body aanvullen" }
+    static var extendBodyUndo: String       { en ? "Undo Extend Body" : "Body aanvullen ongedaan maken" }
+    static var extendBodyHelp: String {
+        en ? "Use AI to generate missing shoulders and torso when your photo is cropped."
+           : "Gebruik AI om ontbrekende schouders en torso te genereren bij een afgekapte foto."
+    }
+    static var extendBodyUndoHelp: String {
+        en ? "Revert to the original (non-extended) cutout."
+           : "Herstel de originele (niet-uitgebreide) uitknip."
+    }
+    static var extendBodyAlreadyComplete: String {
+        en ? "Body is already fully visible — nothing to extend."
+           : "De body is al volledig zichtbaar — niets om aan te vullen."
+    }
+    static var extendBodyRequiresSignIn: String {
+        en ? "Sign in with Google to use Extend Body."
+           : "Meld je aan met Google om Body aanvullen te gebruiken."
+    }
+    static var extendBodyNoCutout: String {
+        en ? "Import a photo first." : "Importeer eerst een foto."
+    }
+    static func extendBodyFailed(_ err: String) -> String {
+        en ? "Extend Body failed: \(err)" : "Body aanvullen mislukt: \(err)"
+    }
+
+    // MARK: Paywall – Pro upgrade sheet
+    static var extendBodyUpgradeTitle: String {
+        en ? "Extend Body" : "Body aanvullen"
+    }
+    static var extendBodyUpgradeHeadline: String {
+        en ? "Extend Body is a Pro feature"
+           : "Body aanvullen is een Pro-functie"
+    }
+    static var extendBodyUpgradeSubtitle: String {
+        en ? "Generate missing shoulders and torso with AI. Choose a plan to get monthly credits."
+           : "Genereer ontbrekende schouders en torso met AI. Kies een abonnement voor maandelijkse credits."
+    }
+    static var extendBodyUpgradePopular: String {
+        en ? "Most popular" : "Populair"
+    }
+    static var extendBodyUpgradePerMonth: String {
+        en ? "/month" : "/maand"
+    }
+    static func extendBodyUpgradeCreditsPerMonth(_ n: Int) -> String {
+        en ? "\(n) extensions per month" : "\(n) aanvullingen per maand"
+    }
+    static var extendBodyUpgradeCTA: String {
+        en ? "Upgrade" : "Kies abonnement"
+    }
+    static var extendBodyUpgradeStarterDesc: String {
+        en ? "Enough for occasional cleanups — 20 generations each month."
+           : "Genoeg voor af en toe een aanvulling — 20 generaties per maand."
+    }
+    static var extendBodyUpgradePlusDesc: String {
+        en ? "Our most popular plan. 50 generations each month for regular work."
+           : "Ons populairste abonnement. 50 generaties per maand voor regelmatig werk."
+    }
+    static var extendBodyUpgradeStudioDesc: String {
+        en ? "For teams and power users. 150 generations each month."
+           : "Voor teams en power users. 150 generaties per maand."
+    }
+    static var extendBodyUpgradeFinePrint: String {
+        en ? "Cancel anytime. Credits reset at the start of each billing period."
+           : "Op elk moment opzegbaar. Credits resetten aan het begin van elke factuurperiode."
+    }
+    static var extendBodyUpgradeSignInFirst: String {
+        en ? "Please sign in first to manage your subscription."
+           : "Meld je eerst aan om je abonnement te beheren."
+    }
+
+    // MARK: Pro settings section
+    static var proSectionTitle: String      { en ? "Extend Body (Pro)" : "Body aanvullen (Pro)" }
+    static var proSignInWithGoogle: String  { en ? "Sign in with Google" : "Aanmelden met Google" }
+    static var proSignOut: String           { en ? "Sign out" : "Afmelden" }
+    static var proCurrentPlan: String       { en ? "Plan" : "Abonnement" }
+    static var proCreditsRemaining: String  { en ? "Credits remaining" : "Credits over" }
+    static var proRenewsAt: String          { en ? "Renews" : "Vernieuwt op" }
+    static var proManageSubscription: String {
+        en ? "Manage subscription" : "Beheer abonnement"
+    }
+    static var proNoSubscription: String {
+        en ? "No active subscription." : "Geen actief abonnement."
+    }
+    static var proUpgradeNow: String         { en ? "Upgrade" : "Upgraden" }
+
+    // MARK: Legal links
+    static var termsOfService: String       { en ? "Terms of Service" : "Algemene voorwaarden" }
+    static var privacyPolicy: String        { en ? "Privacy Policy" : "Privacybeleid" }
+
     // MARK: Editor – Adjustments
     static var colorAdjustments: String { en ? "Color Adjustments" : "Kleuraanpassingen" }
     static var exposure: String        { en ? "Exposure" : "Belichting" }
@@ -165,6 +255,35 @@ enum Loc {
            : "Drop foto hier voor een nieuw portret"
     }
     static var processingPhoto: String { en ? "Processing photo…" : "Foto verwerken…" }
+
+    /// Playful rotating status messages shown while a photo is processing.
+    /// Opens with a lively line so the loader never reads as generic
+    /// "Processing…"; later messages lean into the wait.
+    static var processingStatuses: [String] {
+        en ? [
+            "Warming up the scissors…",
+            "Removing the background…",
+            "Touching up the hair…",
+            "Wow, that's a lot of hair…",
+            "Sharpening the details…",
+            "Counting every pixel…",
+            "Polishing the edges…",
+            "Consulting the stylist…",
+            "Having second thoughts…",
+            "Almost there, promise…",
+        ] : [
+            "Schaartjes opwarmen…",
+            "Achtergrond verwijderen…",
+            "Haar bijwerken…",
+            "Oef, dat is veel haar…",
+            "Details aanscherpen…",
+            "Elke pixel tellen…",
+            "Randjes polijsten…",
+            "De stylist erbij halen…",
+            "Even twijfelen…",
+            "Bijna klaar, echt waar…",
+        ]
+    }
 
     // MARK: Editor – Advanced model hint
     static var betterHairAvailable: String {

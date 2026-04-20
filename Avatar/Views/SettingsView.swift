@@ -215,8 +215,117 @@ struct ExportPresetsSettings: View {
 
 struct AIModelSettings: View {
     @Environment(ModelManager.self) private var modelManager
+    @Environment(AppState.self) private var appState
 
     var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                birefnetSection
+                Divider()
+                proSection
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Pro / Extend Body section
+
+    @ViewBuilder
+    private var proSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(Loc.proSectionTitle).font(.headline)
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "person.crop.rectangle.badge.plus")
+                            .font(.title2)
+                            .foregroundStyle(.tint)
+                            .frame(width: 32)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(Loc.extendBody).font(.body.weight(.medium))
+                            Text(Loc.extendBodyHelp)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    Divider()
+
+                    if !appState.auth.isSignedIn {
+                        Button {
+                            appState.auth.startSignIn()
+                        } label: {
+                            Label(Loc.proSignInWithGoogle, systemImage: "person.crop.circle.badge.checkmark")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    } else {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                if let email = appState.auth.email {
+                                    Text(email).font(.caption).foregroundStyle(.secondary)
+                                }
+                                if let tier = appState.proEntitlement.tier {
+                                    HStack(spacing: 6) {
+                                        Text(Loc.proCurrentPlan + ":")
+                                        Text(tier.displayName).fontWeight(.medium)
+                                    }
+                                    Text("\(Loc.proCreditsRemaining): \(appState.proEntitlement.credits)")
+                                    if let renews = appState.proEntitlement.renewsAt {
+                                        Text("\(Loc.proRenewsAt): \(renews.formatted(date: .abbreviated, time: .omitted))")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                } else {
+                                    Text(Loc.proNoSubscription)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 6) {
+                                if appState.proEntitlement.isPro {
+                                    Button(Loc.proManageSubscription) {
+                                        Task { await openPortal() }
+                                    }
+                                    .controlSize(.small)
+                                } else {
+                                    Button(Loc.proUpgradeNow) {
+                                        appState.showProUpgradeSheet = true
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.small)
+                                }
+                                Button(Loc.proSignOut) {
+                                    appState.auth.signOut()
+                                    appState.proEntitlement.clear()
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                    }
+                }
+                .padding(4)
+            }
+        }
+    }
+
+    @MainActor
+    private func openPortal() async {
+        do {
+            let url = try await appState.backend.openPortal()
+            NSWorkspace.shared.open(url)
+        } catch {
+            appState.lastError = (error as? LocalizedError)?.errorDescription
+        }
+    }
+
+    // MARK: - Existing BiRefNet section (renamed from `body`)
+
+    @ViewBuilder
+    private var birefnetSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(Loc.aiHairQuality).font(.headline)
 
@@ -403,7 +512,7 @@ struct UpdatesSettings: View {
                                   systemImage: "arrow.triangle.2.circlepath.circle.fill")
                             .foregroundStyle(.tint)
                             Spacer()
-                            Button(Loc.restart) {
+                            Button(Loc.relaunch) {
                                 updater.relaunchAndInstall()
                             }
                             .buttonStyle(.borderedProminent)

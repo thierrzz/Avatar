@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "functions": {
+    "api/extend-body.ts": {
+      "maxDuration": 120,
+      "memory": 1024
+    },
+    "api/stripe-webhook.ts": {
+      "maxDuration": 30
+    }
+  }
+}

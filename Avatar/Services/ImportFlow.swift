@@ -421,6 +421,107 @@ enum ImportFlow {
         appState.invalidateCutout(for: portrait)
     }
 
+    // MARK: - Extend Body (Pro)
+
+    /// Calls the backend (Replicate flux-fill-pro proxy) to outpaint missing
+    /// shoulders/torso, re-segments the result, and replaces `cutoutPNG`.
+    /// Snapshots the pre-extend state so the operation can be toggled off.
+    ///
+    /// Precondition: the caller must already have verified that the user is
+    /// signed in *and* has at least one credit. If the backend returns 402
+    /// anyway (race), this method re-opens the upgrade sheet.
+    static func extendBody(portrait: Portrait, context: ModelContext, appState: AppState,
+                           modelManager: ModelManager? = nil) {
+        guard !portrait.isBodyExtended else {
+            appState.lastError = Loc.extendBodyAlreadyComplete
+            return
+        }
+        guard portrait.cutoutPNG != nil else {
+            appState.lastError = Loc.extendBodyNoCutout
+            return
+        }
+
+        appState.isProcessing = true
+        appState.lastError = nil
+        let portraitID = portrait.id
+        let backend = appState.backend
+        print("[ExtendBody] start id=\(portraitID)")
+
+        Task {
+            do {
+                let result = try await ExtendBodyService.extend(
+                    portrait: portrait, backend: backend, modelManager: modelManager
+                )
+
+                let descriptor = FetchDescriptor<Portrait>(
+                    predicate: #Predicate { $0.id == portraitID }
+                )
+                guard let fresh = try? context.fetch(descriptor).first else {
+                    appState.isProcessing = false
+                    appState.lastError = Loc.portraitNotFound
+                    return
+                }
+
+                // Snapshot pre-extend state so the op can be toggled off.
+                fresh.preExtendBodyCutoutPNG = fresh.cutoutPNG
+                fresh.preExtendBodyBodyBottomY = fresh.bodyBottomY
+                fresh.preExtendBodyOffsetX = fresh.offsetX
+                fresh.preExtendBodyOffsetY = fresh.offsetY
+                fresh.preExtendBodyScale = fresh.scale
+
+                // Apply new cutout + metadata.
+                fresh.cutoutPNG = result.cutoutPNG
+                fresh.bodyBottomY = Double(result.bodyBottomY)
+                if let face = result.faceRect { fresh.faceRect = face }
+                if let eye = result.eyeCenter {
+                    fresh.eyeCenterX = Double(eye.x)
+                    fresh.eyeCenterY = Double(eye.y)
+                }
+                if let d = result.interEyeDistance {
+                    fresh.interEyeDistance = Double(d)
+                }
+                fresh.isBodyExtended = true
+                fresh.updatedAt = Date()
+                try? context.save()
+
+                // Refresh entitlement so the credits counter reflects the spend.
+                appState.refreshEntitlement()
+
+                appState.invalidateCutout(for: fresh)
+                appState.isProcessing = false
+                print("[ExtendBody] DONE id=\(fresh.id)")
+            } catch BackendError.notSignedIn {
+                appState.isProcessing = false
+                appState.showSignInPrompt = true
+            } catch BackendError.noCredits {
+                appState.isProcessing = false
+                appState.showProUpgradeSheet = true
+                appState.refreshEntitlement()
+            } catch {
+                appState.isProcessing = false
+                let msg = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                appState.lastError = Loc.extendBodyFailed(msg)
+                print("[ExtendBody] ERROR \(error)")
+            }
+        }
+    }
+
+    /// Reverts Extend Body by restoring the pre-extend snapshot.
+    static func undoExtendBody(portrait: Portrait, context: ModelContext, appState: AppState) {
+        guard portrait.isBodyExtended,
+              let original = portrait.preExtendBodyCutoutPNG else { return }
+        portrait.cutoutPNG = original
+        portrait.bodyBottomY = portrait.preExtendBodyBodyBottomY
+        portrait.offsetX = portrait.preExtendBodyOffsetX
+        portrait.offsetY = portrait.preExtendBodyOffsetY
+        portrait.scale = portrait.preExtendBodyScale
+        portrait.isBodyExtended = false
+        portrait.preExtendBodyCutoutPNG = nil
+        portrait.updatedAt = Date()
+        try? context.save()
+        appState.invalidateCutout(for: portrait)
+    }
+
     // MARK: - Import Pipeline
 
     /// Runs the cutout + auto-align pipeline and inserts a Portrait. Must be

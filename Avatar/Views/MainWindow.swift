@@ -30,6 +30,17 @@ struct MainWindow: View {
                 .help(Loc.importPhotoHelp)
             }
         }
+        .sheet(isPresented: $state.showProUpgradeSheet) {
+            ProUpgradeSheet()
+                .environment(appState)
+        }
+        .onOpenURL { url in
+            URLSchemeHandler.handle(url, appState: appState)
+        }
+        .task {
+            // Refresh Pro entitlement on launch so the badge/credits are accurate.
+            appState.refreshEntitlement()
+        }
     }
 
     private func pickFile() {

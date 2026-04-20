@@ -51,6 +51,10 @@ targets:
         SUEnableInstallerLauncherService: true
         SUEnableDownloaderService: true
         SUAllowsAutomaticUpdates: true
+        CFBundleURLTypes:
+          - CFBundleURLName: nl.avatar.app.scheme
+            CFBundleURLSchemes:
+              - aaavatar
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: nl.avatar.app
