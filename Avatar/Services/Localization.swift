@@ -416,6 +416,11 @@ enum Loc {
     static var owner: String           { en ? "Owner" : "Eigenaar" }
     static var lastSynced: String      { en ? "Last synced" : "Laatst gesynchroniseerd" }
     static var shareSuccess: String    { en ? "Invitation sent" : "Uitnodiging verstuurd" }
+    static var members: String         { en ? "Members" : "Leden" }
+    static var loadingMembers: String  { en ? "Loading members…" : "Leden laden…" }
+    static var revoke: String          { en ? "Remove" : "Verwijder" }
+    static var invalidEmail: String    { en ? "Enter a valid email address." : "Voer een geldig e-mailadres in." }
+    static var alreadyInvited: String  { en ? "That email is already invited." : "Dat e-mailadres is al uitgenodigd." }
     static func inviteEmailBody(
         inviterName: String,
         workspaceName: String,

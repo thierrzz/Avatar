@@ -122,6 +122,26 @@ actor DriveService {
 
     // MARK: - Sharing
 
+    /// Lists all permissions on a file/folder. Used to render the member
+    /// list for a workspace.
+    func listPermissions(fileID: String) async throws -> [DrivePermission] {
+        let url = "\(baseURL)/files/\(fileID)/permissions?fields=permissions(id,emailAddress,role,displayName,photoLink,type)&pageSize=100"
+        let request = try await authorizedRequest(url: url)
+        let response: DrivePermissionList = try await execute(request)
+        return response.permissions
+    }
+
+    /// Revokes a user's access to a file/folder.
+    func removePermission(fileID: String, permissionID: String) async throws {
+        let url = "\(baseURL)/files/\(fileID)/permissions/\(permissionID)"
+        let request = try await authorizedRequest(url: url, method: "DELETE")
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300 ~= http.statusCode || http.statusCode == 404) else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            throw DriveError.httpError(code)
+        }
+    }
+
     /// Shares a file/folder with a user by email. Asks Drive to send the
     /// notification email with an optional custom message (used to embed
     /// the Avatar download link and `avatar://join` deep link).
@@ -291,6 +311,21 @@ struct DriveChangeList: Codable {
 
 struct StartPageTokenResponse: Codable {
     let startPageToken: String
+}
+
+struct DrivePermission: Codable, Identifiable {
+    let id: String
+    var emailAddress: String?
+    let role: String
+    var displayName: String?
+    var photoLink: String?
+    let type: String
+
+    var isOwner: Bool { role == "owner" }
+}
+
+struct DrivePermissionList: Codable {
+    let permissions: [DrivePermission]
 }
 
 enum DriveError: LocalizedError {

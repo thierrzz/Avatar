@@ -20,6 +20,17 @@ struct WorkspaceSettingsSheet: View {
     @State private var moveError: String?
     @State private var moveSuccess = false
 
+    @State private var members: [DrivePermission] = []
+    @State private var isLoadingMembers = false
+    @State private var membersError: String?
+    @State private var revokingID: String?
+
+    private var isEmailValid: Bool {
+        let trimmed = shareEmail.trimmingCharacters(in: .whitespaces)
+        let pattern = #"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"#
+        return trimmed.range(of: pattern, options: .regularExpression) != nil
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -101,7 +112,7 @@ struct WorkspaceSettingsSheet: View {
                         Button(Loc.share) {
                             shareWithUser()
                         }
-                        .disabled(shareEmail.isEmpty || isSharing)
+                        .disabled(!isEmailValid || isSharing)
                     }
                     if let shareError {
                         Text(shareError)
@@ -112,6 +123,26 @@ struct WorkspaceSettingsSheet: View {
                         Label(Loc.shareSuccess, systemImage: "checkmark.circle.fill")
                             .font(.caption)
                             .foregroundStyle(.green)
+                    }
+                }
+
+                // Members
+                Section(Loc.members) {
+                    if isLoadingMembers && members.isEmpty {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.mini)
+                            Text(Loc.loadingMembers)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    ForEach(members) { permission in
+                        memberRow(permission)
+                    }
+                    if let membersError {
+                        Text(membersError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
                     }
                 }
 
@@ -147,10 +178,93 @@ struct WorkspaceSettingsSheet: View {
             }
             .padding()
         }
-        .frame(width: 420, height: 480)
+        .frame(width: 420, height: 520)
         .sheet(isPresented: $showFolderPicker) {
             DriveFolderPicker(authService: auth) { folder in
                 moveFolder(to: folder)
+            }
+        }
+        .task { await loadMembers() }
+    }
+
+    @ViewBuilder
+    private func memberRow(_ permission: DrivePermission) -> some View {
+        HStack(spacing: 8) {
+            if let photo = permission.photoLink.flatMap(URL.init(string:)) {
+                AsyncImage(url: photo) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Image(systemName: "person.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: 24, height: 24)
+                .clipShape(Circle())
+            } else {
+                Image(systemName: "person.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+            }
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(permission.displayName ?? permission.emailAddress ?? permission.id)
+                    .font(.callout)
+                Text(permission.emailAddress ?? permission.role)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if permission.isOwner {
+                Text(Loc.owner)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if revokingID == permission.id {
+                ProgressView().controlSize(.mini)
+            } else {
+                Button(role: .destructive) {
+                    revoke(permission)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help(Loc.revoke)
+            }
+        }
+    }
+
+    private func loadMembers() async {
+        isLoadingMembers = true
+        defer { isLoadingMembers = false }
+        do {
+            let driveService = DriveService(authService: auth)
+            let perms = try await driveService.listPermissions(fileID: workspace.driveFolderID)
+            members = perms.sorted { a, b in
+                if a.isOwner != b.isOwner { return a.isOwner }
+                return (a.displayName ?? a.emailAddress ?? "") < (b.displayName ?? b.emailAddress ?? "")
+            }
+            membersError = nil
+        } catch {
+            membersError = error.localizedDescription
+        }
+    }
+
+    private func revoke(_ permission: DrivePermission) {
+        revokingID = permission.id
+        Task {
+            defer { revokingID = nil }
+            do {
+                let driveService = DriveService(authService: auth)
+                try await driveService.removePermission(
+                    fileID: workspace.driveFolderID,
+                    permissionID: permission.id
+                )
+                await loadMembers()
+            } catch {
+                membersError = error.localizedDescription
             }
         }
     }
@@ -203,6 +317,10 @@ struct WorkspaceSettingsSheet: View {
                 )
                 shareSuccess = true
                 shareEmail = ""
+                await loadMembers()
+            } catch DriveError.httpError(400) {
+                // Drive returns 400 when the email is already a collaborator.
+                shareError = Loc.alreadyInvited
             } catch {
                 shareError = error.localizedDescription
             }
