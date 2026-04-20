@@ -9,9 +9,9 @@ import ZIPFoundation
 /// the `avatar://join` scheme and the download URL are both produced on the
 /// inviter side and consumed on the invitee side by this engine.
 enum AvatarInvite {
-    /// Public download page for the signed+notarised DMG. Update when the
-    /// release pipeline is in place (Section E of the invite-flow plan).
-    static let downloadURL = "https://github.com/thierrzz/avatars/releases/latest"
+    /// GitHub Releases landing page — always points at the most recent
+    /// signed+notarised build produced by scripts/release.sh.
+    static let downloadURL = "https://github.com/thierrzz/Avatar/releases/latest"
 
     /// Builds the `avatar://join` deep link an invitee clicks from the
     /// notification email.
