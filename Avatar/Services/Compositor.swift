@@ -32,11 +32,6 @@ enum Compositor {
         ctx.interpolationQuality = .high
         ctx.setShouldAntialias(true)
 
-        // Use a flipped coordinate system so transforms saved in the editor
-        // (top-left origin) match what we draw here.
-        ctx.translateBy(x: 0, y: outputSize.height)
-        ctx.scaleBy(x: 1, y: -1)
-
         // Circle clip if needed (clip BEFORE drawing so background also gets clipped).
         if shape == .circle {
             let path = CGPath(ellipseIn: CGRect(origin: .zero, size: outputSize), transform: nil)
@@ -48,6 +43,9 @@ enum Compositor {
         drawBackground(background, in: ctx, size: outputSize)
 
         // 2. Cutout — remap from edit canvas to output size.
+        // The editor stores offsets in a top-left-origin space; Core Graphics
+        // is y-up, so convert at the boundary rather than flipping the CTM
+        // (which would render the cutout and image backgrounds upside-down).
         let editCanvas = CanvasConstants.editCanvas
         let scaleX = outputSize.width / editCanvas.width
         let scaleY = outputSize.height / editCanvas.height
@@ -55,7 +53,7 @@ enum Compositor {
         let cutoutW = CGFloat(cutout.width) * transform.scale * scaleX
         let cutoutH = CGFloat(cutout.height) * transform.scale * scaleY
         let drawX = transform.offset.width * scaleX
-        let drawY = transform.offset.height * scaleY
+        let drawY = outputSize.height - (transform.offset.height * scaleY) - cutoutH
 
         ctx.draw(cutout, in: CGRect(x: drawX, y: drawY, width: cutoutW, height: cutoutH))
 
