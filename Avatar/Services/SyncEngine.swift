@@ -57,6 +57,12 @@ final class SyncEngine {
         defer { isSyncing = false }
 
         do {
+            try await discoverSharedWorkspaces(context: context)
+        } catch {
+            print("[Sync] discover shared workspaces error: \(error)")
+        }
+
+        do {
             let workspaces = try context.fetch(FetchDescriptor<Workspace>())
             for workspace in workspaces {
                 do {
@@ -386,6 +392,81 @@ final class SyncEngine {
     func discoverWorkspaces(context: ModelContext) async throws -> [DriveFile] {
         let folders = try await driveService.findWorkspaceFolders()
         return folders
+    }
+
+    /// Adds a Drive workspace folder to the local library. Used for both
+    /// `avatar://join` deep links and automatic discovery of folders shared
+    /// with the signed-in user. Reads `workspace.json` for metadata when
+    /// available; falls back to the folder name on missing/malformed JSON.
+    @discardableResult
+    func joinWorkspace(
+        folderID: String,
+        folderName: String,
+        context: ModelContext
+    ) async throws -> Workspace {
+        if let existing = try context.fetch(
+            FetchDescriptor<Workspace>(predicate: #Predicate { $0.driveFolderID == folderID })
+        ).first {
+            return existing
+        }
+
+        let meta = try? await readWorkspaceMetadata(folderID: folderID)
+        let displayName = meta?.name ?? folderName
+            .replacingOccurrences(of: "Avatar Workspace - ", with: "")
+        let ownerEmail = meta?.createdBy ?? "unknown"
+
+        let changeToken = try await driveService.getStartPageToken()
+        let workspace = Workspace(
+            name: displayName,
+            driveFolderID: folderID,
+            ownerEmail: ownerEmail
+        )
+        workspace.lastChangeToken = changeToken
+        context.insert(workspace)
+        try context.save()
+        print("[Sync] joined workspace '\(displayName)' folderID=\(folderID)")
+        return workspace
+    }
+
+    /// Enumerates workspace folders on Drive (including ones shared with
+    /// the signed-in user) and joins any that aren't already local.
+    /// Silently skips folders that fail to join — a bad entry must not
+    /// block syncing the rest.
+    func discoverSharedWorkspaces(context: ModelContext) async throws {
+        let remote = try await driveService.findWorkspaceFolders()
+        guard !remote.isEmpty else { return }
+
+        let localIDs = Set(
+            (try? context.fetch(FetchDescriptor<Workspace>()))?.map(\.driveFolderID) ?? []
+        )
+
+        for folder in remote where !localIDs.contains(folder.id) {
+            do {
+                _ = try await joinWorkspace(
+                    folderID: folder.id,
+                    folderName: folder.name,
+                    context: context
+                )
+            } catch {
+                print("[Sync] auto-join failed for \(folder.name): \(error)")
+            }
+        }
+    }
+
+    private struct WorkspaceMetadata: Decodable {
+        let formatVersion: Int?
+        let name: String?
+        let createdAt: String?
+        let createdBy: String?
+    }
+
+    private func readWorkspaceMetadata(folderID: String) async throws -> WorkspaceMetadata? {
+        let files = try await driveService.listFiles(inFolder: folderID, mimeType: "application/json")
+        guard let metaFile = files.first(where: { $0.name == "workspace.json" }) else {
+            return nil
+        }
+        let data = try await driveService.downloadFile(fileID: metaFile.id)
+        return try JSONDecoder().decode(WorkspaceMetadata.self, from: data)
     }
 
     // MARK: - Packaging helpers

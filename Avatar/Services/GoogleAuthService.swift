@@ -3,8 +3,10 @@ import GoogleSignIn
 import AppKit
 
 /// Manages Google Sign-In for workspace functionality.
-/// Uses the `drive.file` scope — the app can only access files it created
-/// or files explicitly shared with it, not the user's entire Drive.
+/// Uses the full `drive` scope so workspaces shared with the signed-in
+/// account are discoverable via the Drive API (required for zero-friction
+/// invite acceptance — the narrower `drive.file` scope hides folders the
+/// client did not itself create or explicitly open).
 @MainActor
 @Observable
 final class GoogleAuthService {
@@ -20,9 +22,11 @@ final class GoogleAuthService {
     /// and enable the Google Drive API.
     static let clientID = "352886726285-hb27mhp83uujlbvufjscauet7ir2gehr.apps.googleusercontent.com"
 
-    /// Required OAuth scopes — `drive.file` is the minimal scope that allows
-    /// creating, reading, and writing files the app owns.
-    private static let scopes = ["https://www.googleapis.com/auth/drive.file"]
+    /// Required OAuth scopes. Full `drive` is needed so invitees can
+    /// discover workspace folders that were shared with them but never
+    /// opened by their Avatar client. Declare this scope on the Google
+    /// Cloud Console OAuth consent screen before shipping.
+    private static let scopes = ["https://www.googleapis.com/auth/drive"]
 
     // MARK: - Lifecycle
 
