@@ -21,6 +21,22 @@ struct EditorView: View {
     @State private var showExport = false
     @State private var showBulkAlignConfirm = false
     @State private var bulkSkippedCount: Int? = nil
+    @State private var showDeleteConfirm = false
+
+    /// Which pane the right-hand inspector is showing. Persisted across launches.
+    @AppStorage("editorTab") private var editorTab: EditorTab = .portrait
+
+    enum EditorTab: String, CaseIterable, Identifiable {
+        case portrait, enhance, adjust
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .portrait: return Loc.tabPortrait
+            case .enhance:  return Loc.tabEnhance
+            case .adjust:   return Loc.tabAdjust
+            }
+        }
+    }
 
     /// Shows a semi-transparent alignment guide (eye markers + head oval)
     /// on the canvas so you can visually verify that all portraits share the
@@ -111,6 +127,26 @@ struct EditorView: View {
                     } label: {
                         Label(Loc.export, systemImage: "square.and.arrow.up")
                     }
+
+                    Menu {
+                        Button {
+                            showBulkAlignConfirm = true
+                        } label: {
+                            Label(Loc.alignAllPortraits, systemImage: "rectangle.3.group")
+                        }
+                        .disabled(alignableCount < 2)
+
+                        Divider()
+
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            Label(Loc.deletePortrait, systemImage: "trash")
+                        }
+                    } label: {
+                        Label(Loc.more, systemImage: "ellipsis.circle")
+                    }
+                    .help(Loc.moreHelp)
                 }
             }
             .sheet(isPresented: $showExport) {
@@ -327,144 +363,27 @@ struct EditorView: View {
     // MARK: - Controls
 
     private var controlsPanel: some View {
-        Form {
-            // MARK: Info
-            Section {
-                TextField(Loc.employeeName, text: $portrait.name)
-                    .onChange(of: portrait.name) { _, _ in try? context.save() }
-                TextField(Loc.role, text: $portrait.tags)
-                    .onChange(of: portrait.tags) { _, _ in try? context.save() }
-            } header: {
-                Text(Loc.info)
-            }
-
-            // MARK: Background
-            Section {
-                BackgroundPicker(portrait: portrait, backgrounds: backgrounds)
-            } header: {
-                Text(Loc.background)
-            }
-
-            // MARK: Position & Scale
-            Section {
-                HStack {
-                    Slider(
-                        value: Binding(
-                            get: { portrait.scale },
-                            set: {
-                                trackSliderUndo(actionName: Loc.scale)
-                                portrait.scale = $0
-                                portrait.updatedAt = Date()
-                                try? context.save()
-                            }
-                        ),
-                        in: 0.05...4.0
-                    )
-                    Text(String(format: "%.2fx", portrait.scale))
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 50, alignment: .trailing)
-                }
-
-                Button {
-                    autoAlign()
-                } label: {
-                    Label(Loc.autoAlignFace, systemImage: "face.smiling")
-                }
-                .disabled(portrait.faceRect == .zero)
-            } header: {
-                Text(Loc.positionScale)
-            }
-
-            // MARK: Edit
-            Section {
-                Button {
-                    ImportFlow.reprocess(portrait: portrait, context: context, appState: appState,
-                                        modelManager: modelManager)
-                } label: {
-                    Label(Loc.reCutout, systemImage: "wand.and.stars")
-                }
-                .disabled(portrait.originalImageData == nil || appState.isProcessing)
-                .help(modelManager.isAvailable && modelManager.useAdvancedModel
-                    ? Loc.reCutoutHelpAdvanced
-                    : Loc.reCutoutHelpApple)
-
-                Button {
-                    ImportFlow.upscale(portrait: portrait, context: context, appState: appState,
-                                      modelManager: modelManager)
-                } label: {
-                    Label(Loc.upscale2x, systemImage: "arrow.up.left.and.arrow.down.right.magnifyingglass")
-                }
-                .disabled(portrait.isUpscaled || portrait.originalImageData == nil || appState.isProcessing)
-                .help(portrait.isUpscaled
-                    ? Loc.alreadyUpscaled
-                    : Loc.upscaleHelp)
-
-                Button {
-                    if portrait.isMagicRetouched {
-                        ImportFlow.undoMagicRetouch(portrait: portrait, context: context, appState: appState)
-                    } else {
-                        ImportFlow.magicRetouch(portrait: portrait, context: context, appState: appState)
-                    }
-                } label: {
-                    Label(portrait.isMagicRetouched ? Loc.magicRetouchUndo : Loc.magicRetouch,
-                          systemImage: portrait.isMagicRetouched ? "arrow.uturn.backward" : "wand.and.sparkles")
-                }
-                .disabled(portrait.cutoutPNG == nil || appState.isProcessing)
-                .help(portrait.isMagicRetouched
-                    ? Loc.magicRetouchUndoHelp
-                    : Loc.magicRetouchHelp)
-
-                // Subtle hint when the advanced model is not yet downloaded.
-                if !modelManager.isAvailable && !modelManager.hintDismissed {
-                    AdvancedModelHint(modelManager: modelManager)
-                }
-            } header: {
-                Text(Loc.edit)
-            }
-
-            // MARK: Adjustments
-            Section {
-                DisclosureGroup(Loc.colorAdjustments) {
-                    adjustmentSlider(Loc.exposure,     value: $portrait.adjExposure,    range: -2...2,       neutral: 0,   displayScale: 50)
-                    adjustmentSlider(Loc.contrast,     value: $portrait.adjContrast,    range: 0.5...1.5,    neutral: 1,   displayScale: 200)
-                    adjustmentSlider(Loc.tint,         value: $portrait.adjTint,        range: -100...100,   neutral: 0,   displayScale: 1)
-                    adjustmentSlider(Loc.saturation,   value: $portrait.adjSaturation,  range: 0...2,        neutral: 1,   displayScale: 100)
-                    adjustmentSlider(Loc.temperature,  value: $portrait.adjTemperature, range: -2000...2000, neutral: 0,   displayScale: 0.05)
-                    adjustmentSlider(Loc.highlights,   value: $portrait.adjHighlights,  range: 0...2,        neutral: 1,   displayScale: 100)
-                    adjustmentSlider(Loc.shadows,      value: $portrait.adjShadows,     range: -1...1,       neutral: 0,   displayScale: 100)
-
-                    Button(Loc.resetAdjustments) {
-                        resetAdjustments()
-                    }
-                    .foregroundStyle(.secondary)
+        VStack(spacing: 0) {
+            Picker("", selection: $editorTab.animation(.easeInOut(duration: 0.18))) {
+                ForEach(EditorTab.allCases) { tab in
+                    Text(tab.label).tag(tab)
                 }
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 4)
 
-            // MARK: Library
-            Section {
-                Button {
-                    showBulkAlignConfirm = true
-                } label: {
-                    Label(Loc.alignAllPortraits, systemImage: "rectangle.3.group")
-                }
-                .disabled(alignableCount < 2)
-                .help(Loc.alignAllHelp(alignableCount))
-            } header: {
-                Text(Loc.library)
-            }
-
-            // MARK: Delete
-            Section {
-                Button(role: .destructive) {
-                    context.delete(portrait)
-                    appState.selectedPortraitID = nil
-                } label: {
-                    Label(Loc.deletePortrait, systemImage: "trash")
+            Form {
+                switch editorTab {
+                case .portrait: portraitTab
+                case .enhance:  enhanceTab
+                case .adjust:   adjustTab
                 }
             }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
         .confirmationDialog(
             Loc.alignAllQuestion,
             isPresented: $showBulkAlignConfirm,
@@ -474,6 +393,19 @@ struct EditorView: View {
             Button(Loc.cancel, role: .cancel) { }
         } message: {
             Text(Loc.alignConfirmMessage(alignableCount))
+        }
+        .confirmationDialog(
+            Loc.deleteQuestion,
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button(Loc.deletePortrait, role: .destructive) {
+                context.delete(portrait)
+                appState.selectedPortraitID = nil
+            }
+            Button(Loc.cancel, role: .cancel) { }
+        } message: {
+            Text(Loc.deleteMessage)
         }
         .alert(Loc.alignComplete, isPresented: Binding(
             get: { bulkSkippedCount != nil },
@@ -487,23 +419,276 @@ struct EditorView: View {
         }
     }
 
+    // MARK: Portrait tab
+
+    @ViewBuilder private var portraitTab: some View {
+        Section {
+            HStack(spacing: 8) {
+                Image(systemName: "person.crop.circle")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+                TextField(Loc.employeeName, text: $portrait.name)
+                    .textFieldStyle(.plain)
+                    .onChange(of: portrait.name) { _, _ in try? context.save() }
+            }
+            HStack(spacing: 8) {
+                Image(systemName: "tag")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+                TextField(Loc.role, text: $portrait.tags)
+                    .textFieldStyle(.plain)
+                    .onChange(of: portrait.tags) { _, _ in try? context.save() }
+            }
+        } header: {
+            Text(Loc.info)
+        }
+
+        Section {
+            BackgroundPicker(portrait: portrait, backgrounds: backgrounds)
+        } header: {
+            Text(Loc.background)
+        }
+
+        Section {
+            scaleControl
+            Button {
+                autoAlign()
+            } label: {
+                Label(Loc.autoAlignFace, systemImage: "face.smiling")
+            }
+            .disabled(portrait.faceRect == .zero)
+        } header: {
+            Text(Loc.positionScale)
+        }
+    }
+
+    private var scaleControl: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Button {
+                    stepScale(by: -0.1)
+                } label: {
+                    Image(systemName: "minus.magnifyingglass")
+                }
+                .buttonStyle(.borderless)
+                .help(Loc.zoomOut)
+                .disabled(portrait.scale <= 0.05)
+
+                ZStack {
+                    Slider(
+                        value: Binding(
+                            get: { portrait.scale },
+                            set: {
+                                trackSliderUndo(actionName: Loc.scale)
+                                portrait.scale = $0
+                                portrait.updatedAt = Date()
+                                try? context.save()
+                            }
+                        ),
+                        in: 0.05...4.0
+                    )
+                    // "Actual size" tick at 1.0x on the 0.05…4.0 range.
+                    GeometryReader { geo in
+                        let fraction = (1.0 - 0.05) / (4.0 - 0.05)
+                        Rectangle()
+                            .fill(Color.secondary.opacity(0.45))
+                            .frame(width: 1.5, height: 6)
+                            .position(x: geo.size.width * fraction, y: geo.size.height / 2)
+                            .help(Loc.actualSize)
+                    }
+                    .allowsHitTesting(false)
+                }
+
+                Button {
+                    stepScale(by: 0.1)
+                } label: {
+                    Image(systemName: "plus.magnifyingglass")
+                }
+                .buttonStyle(.borderless)
+                .help(Loc.zoomIn)
+                .disabled(portrait.scale >= 4.0)
+
+                Text(String(format: "%.2fx", portrait.scale))
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 48, alignment: .trailing)
+            }
+        }
+    }
+
+    private func stepScale(by delta: Double) {
+        trackSliderUndo(actionName: Loc.scale)
+        portrait.scale = min(4.0, max(0.05, portrait.scale + delta))
+        portrait.updatedAt = Date()
+        try? context.save()
+        #if os(macOS)
+        haptics.perform(.generic, performanceTime: .now)
+        #endif
+    }
+
+    // MARK: Enhance tab
+
+    @ViewBuilder private var enhanceTab: some View {
+        Section {
+            enhanceCard(
+                title: Loc.reCutout,
+                systemImage: "wand.and.stars",
+                disabled: portrait.originalImageData == nil || appState.isProcessing,
+                help: modelManager.isAvailable && modelManager.useAdvancedModel
+                    ? Loc.reCutoutHelpAdvanced : Loc.reCutoutHelpApple
+            ) {
+                ImportFlow.reprocess(portrait: portrait, context: context, appState: appState,
+                                     modelManager: modelManager)
+            }
+
+            enhanceCard(
+                title: Loc.upscale2x,
+                systemImage: "arrow.up.left.and.arrow.down.right.magnifyingglass",
+                disabled: portrait.isUpscaled || portrait.originalImageData == nil || appState.isProcessing,
+                help: portrait.isUpscaled ? Loc.alreadyUpscaled : Loc.upscaleHelp
+            ) {
+                ImportFlow.upscale(portrait: portrait, context: context, appState: appState,
+                                   modelManager: modelManager)
+            }
+
+            enhanceCard(
+                title: portrait.isMagicRetouched ? Loc.magicRetouchUndo : Loc.magicRetouch,
+                systemImage: portrait.isMagicRetouched ? "arrow.uturn.backward" : "wand.and.sparkles",
+                disabled: portrait.cutoutPNG == nil || appState.isProcessing,
+                help: portrait.isMagicRetouched ? Loc.magicRetouchUndoHelp : Loc.magicRetouchHelp,
+                active: portrait.isMagicRetouched
+            ) {
+                if portrait.isMagicRetouched {
+                    ImportFlow.undoMagicRetouch(portrait: portrait, context: context, appState: appState)
+                } else {
+                    ImportFlow.magicRetouch(portrait: portrait, context: context, appState: appState)
+                }
+            }
+
+            if !modelManager.isAvailable && !modelManager.hintDismissed {
+                AdvancedModelHint(modelManager: modelManager)
+            }
+        } header: {
+            Text(Loc.edit)
+        }
+    }
+
+    @ViewBuilder
+    private func enhanceCard(
+        title: String,
+        systemImage: String,
+        disabled: Bool,
+        help: String,
+        active: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 16, weight: .regular))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(active ? Color.accentColor : Color.primary)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(active ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.12))
+                    )
+                    .symbolEffect(.bounce, value: active)
+                Text(title)
+                    .fontWeight(.medium)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.45 : 1)
+        .help(help)
+    }
+
+    // MARK: Adjust tab
+
+    @ViewBuilder private var adjustTab: some View {
+        Section {
+            adjustmentSlider(Loc.exposure,    icon: "sun.max",            value: $portrait.adjExposure,    range: -2...2,       neutral: 0,   displayScale: 50)
+            adjustmentSlider(Loc.contrast,    icon: "circle.lefthalf.filled", value: $portrait.adjContrast,    range: 0.5...1.5,    neutral: 1,   displayScale: 200)
+            adjustmentSlider(Loc.tint,        icon: "drop",               value: $portrait.adjTint,        range: -100...100,   neutral: 0,   displayScale: 1)
+            adjustmentSlider(Loc.saturation,  icon: "paintpalette",       value: $portrait.adjSaturation,  range: 0...2,        neutral: 1,   displayScale: 100)
+            adjustmentSlider(Loc.temperature, icon: "thermometer.medium", value: $portrait.adjTemperature, range: -2000...2000, neutral: 0,   displayScale: 0.05)
+            adjustmentSlider(Loc.highlights,  icon: "sun.horizon",        value: $portrait.adjHighlights,  range: 0...2,        neutral: 1,   displayScale: 100)
+            adjustmentSlider(Loc.shadows,     icon: "moon",               value: $portrait.adjShadows,     range: -1...1,       neutral: 0,   displayScale: 100)
+
+            if isAdjustmentsDirty {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { resetAdjustments() }
+                } label: {
+                    Label(Loc.resetAdjustments, systemImage: "arrow.counterclockwise")
+                }
+                .foregroundStyle(.secondary)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        } header: {
+            Text(Loc.colorAdjustments)
+        }
+    }
+
+    private var isAdjustmentsDirty: Bool {
+        portrait.adjExposure != 0 ||
+        portrait.adjContrast != 1 ||
+        portrait.adjTint != 0 ||
+        portrait.adjSaturation != 1 ||
+        portrait.adjTemperature != 0 ||
+        portrait.adjHighlights != 1 ||
+        portrait.adjShadows != 0
+    }
+
     private func adjustmentSlider(
         _ label: String,
+        icon: String,
         value: Binding<Double>,
         range: ClosedRange<Double>,
         neutral: Double,
         displayScale: Double
     ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.caption).foregroundStyle(.secondary)
-            HStack {
+        let isDirty = value.wrappedValue != neutral
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 14)
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Circle()
+                    .fill(Color.accentColor)
+                    .frame(width: 6, height: 6)
+                    .opacity(isDirty ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.15), value: isDirty)
+                Spacer()
+                Text(String(format: "%+.0f", (value.wrappedValue - neutral) * displayScale))
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .opacity(isDirty ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.15), value: isDirty)
+            }
+            ZStack {
                 Slider(
                     value: Binding(
                         get: { value.wrappedValue },
                         set: { newValue in
                             trackSliderUndo(actionName: label)
                             let snapThreshold = (range.upperBound - range.lowerBound) * 0.02
+                            let wasOff = value.wrappedValue != neutral
                             let snapped = abs(newValue - neutral) < snapThreshold ? neutral : newValue
+                            if snapped == neutral && wasOff {
+                                #if os(macOS)
+                                haptics.perform(.alignment, performanceTime: .now)
+                                #endif
+                            }
                             value.wrappedValue = snapped
                             portrait.updatedAt = Date()
                             appState.invalidateAdjusted(for: portrait)
@@ -512,9 +697,16 @@ struct EditorView: View {
                     ),
                     in: range
                 )
-                Text(String(format: "%+.0f", (value.wrappedValue - neutral) * displayScale))
-                    .font(.system(.caption, design: .monospaced))
-                    .frame(width: 60, alignment: .trailing)
+                // Subtle tick mark on the track at the neutral position.
+                GeometryReader { geo in
+                    let fraction = (neutral - range.lowerBound) / (range.upperBound - range.lowerBound)
+                    Rectangle()
+                        .fill(Color.secondary.opacity(isDirty ? 0 : 0.55))
+                        .frame(width: 1.5, height: 6)
+                        .position(x: geo.size.width * fraction, y: geo.size.height / 2)
+                        .animation(.easeInOut(duration: 0.15), value: isDirty)
+                }
+                .allowsHitTesting(false)
             }
         }
     }
@@ -1216,18 +1408,37 @@ struct BackgroundChip: View {
                         Color(.sRGB, red: c.0, green: c.1, blue: c.2, opacity: c.3)
                     }
                 }
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .frame(width: 72, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(isSelected ? Color.accentColor : Color.secondary.opacity(0.3),
-                                      lineWidth: isSelected ? 2 : 1)
+                                      lineWidth: isSelected ? 2.5 : 1)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isSelected)
                 }
-                .contentShape(RoundedRectangle(cornerRadius: 6))
-                .onTapGesture { onSelect() }
+                .scaleEffect(isSelected ? 1.04 : 1.0)
+                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isSelected)
+                .shadow(color: .black.opacity(isSelected ? 0.18 : 0.06),
+                        radius: isSelected ? 6 : 2, y: isSelected ? 3 : 1)
+                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                        onSelect()
+                    }
+                }
                 .contextMenu { menuContents }
 
-                if isHovering {
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.white, Color.accentColor)
+                        .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+                        .padding(4)
+                        .symbolEffect(.bounce, value: isSelected)
+                        .transition(.scale.combined(with: .opacity))
+                }
+
+                if isHovering && !isSelected {
                     Menu {
                         menuContents
                     } label: {
@@ -1249,14 +1460,14 @@ struct BackgroundChip: View {
                     .textFieldStyle(.plain)
                     .multilineTextAlignment(.center)
                     .font(.caption2)
-                    .frame(width: 60)
+                    .frame(width: 76)
             } else {
                 Text(preset.name)
                     .font(.caption2)
                     .lineLimit(1)
             }
         }
-        .frame(width: 64)
+        .frame(width: 80)
     }
 
     @ViewBuilder
@@ -1320,18 +1531,18 @@ struct AddBackgroundButton: View {
                 showPopover.toggle()
             } label: {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(Color(.controlBackgroundColor))
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(
                             Color.secondary.opacity(0.4),
                             style: StrokeStyle(lineWidth: 1, dash: [3])
                         )
                     Image(systemName: "plus")
-                        .font(.system(size: 20, weight: .regular))
+                        .font(.system(size: 22, weight: .regular))
                         .foregroundStyle(.secondary)
                 }
-                .frame(width: 56, height: 56)
+                .frame(width: 72, height: 72)
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showPopover, arrowEdge: .top) {
@@ -1343,7 +1554,7 @@ struct AddBackgroundButton: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .frame(width: 64)
+        .frame(width: 80)
     }
 
     private var popoverContents: some View {

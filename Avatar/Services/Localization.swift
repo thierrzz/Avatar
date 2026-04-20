@@ -29,13 +29,14 @@ enum Loc {
     // MARK: General
     static var cancel: String          { en ? "Cancel" : "Annuleer" }
     static var delete: String          { en ? "Delete" : "Verwijder" }
+    static var portraitsPlural: String { en ? "Portraits" : "portretten" }
     static var ok: String              { "OK" }
     static var name: String            { en ? "Name" : "Naam" }
     static var add: String             { en ? "Add" : "Toevoegen" }
     static var close: String           { en ? "Close" : "Sluiten" }
     static var error: String           { en ? "Error" : "Fout" }
     static var retry: String           { en ? "Retry" : "Probeer opnieuw" }
-    static var restart: String         { en ? "Restart" : "Herstart" }
+    static var relaunch: String        { en ? "Relaunch" : "Opnieuw starten" }
     static var select: String          { en ? "Select" : "Selecteer" }
     static var info: String            { "Info" }
 
@@ -51,7 +52,7 @@ enum Loc {
     static var export: String          { en ? "Export" : "Exporteer" }
 
     // MARK: Editor – Info section
-    static var employeeName: String    { en ? "Employee name" : "Naam medewerker" }
+    static var employeeName: String    { en ? "Name" : "Naam" }
     static var role: String            { en ? "Role" : "Rol" }
 
     // MARK: Editor – Background
@@ -111,6 +112,18 @@ enum Loc {
     static var shadows: String         { en ? "Shadows" : "Schaduwen" }
     static var resetAdjustments: String { en ? "Reset Adjustments" : "Herstel aanpassingen" }
     static var adjustment: String      { en ? "Adjustment" : "Aanpassing" }
+
+    // MARK: Editor – Sidebar tabs
+    static var tabPortrait: String     { en ? "Portrait" : "Portret" }
+    static var tabEnhance: String      { en ? "Enhance" : "Verfraaien" }
+    static var tabAdjust: String       { en ? "Adjust" : "Afstellen" }
+    static var more: String            { en ? "More" : "Meer" }
+    static var moreHelp: String        { en ? "Library actions and delete" : "Bibliotheekacties en verwijderen" }
+    static var deleteQuestion: String  { en ? "Delete this portrait?" : "Dit portret verwijderen?" }
+    static var deleteMessage: String   { en ? "This cannot be undone." : "Dit kan niet ongedaan worden gemaakt." }
+    static var actualSize: String      { en ? "Actual size" : "Werkelijke grootte" }
+    static var zoomOut: String         { en ? "Zoom out" : "Uitzoomen" }
+    static var zoomIn: String          { en ? "Zoom in" : "Inzoomen" }
 
     // MARK: Editor – Library section
     static var library: String         { en ? "Library" : "Bibliotheek" }
@@ -283,7 +296,7 @@ enum Loc {
     static func updatedTo(_ version: String) -> String {
         en ? "Updated to \(version)" : "Bijgewerkt naar \(version)"
     }
-    static var restartToApply: String  { en ? "Restart to apply" : "Herstart om toe te passen" }
+    static var relaunchToApply: String { en ? "Relaunch to apply" : "Start opnieuw om toe te passen" }
 
     // MARK: Import flow errors
     static var dropPhotoNotFound: String     { en ? "Could not find the dropped photo." : "Kon de gesleepte foto niet vinden." }
