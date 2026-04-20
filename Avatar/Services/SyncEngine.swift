@@ -5,6 +5,28 @@ import ZIPFoundation
 /// Manages automatic synchronization between the local SwiftData store and
 /// Google Drive workspaces. Runs a polling loop for remote changes and
 /// detects local changes via timestamp comparison.
+/// Invite link + distribution constants. Kept alongside SyncEngine because
+/// the `avatar://join` scheme and the download URL are both produced on the
+/// inviter side and consumed on the invitee side by this engine.
+enum AvatarInvite {
+    /// Public download page for the signed+notarised DMG. Update when the
+    /// release pipeline is in place (Section E of the invite-flow plan).
+    static let downloadURL = "https://github.com/thierrzz/avatars/releases/latest"
+
+    /// Builds the `avatar://join` deep link an invitee clicks from the
+    /// notification email.
+    static func joinURL(folderID: String, name: String) -> URL {
+        var components = URLComponents()
+        components.scheme = "avatar"
+        components.host = "join"
+        components.queryItems = [
+            URLQueryItem(name: "folderID", value: folderID),
+            URLQueryItem(name: "name", value: name)
+        ]
+        return components.url!
+    }
+}
+
 @MainActor
 @Observable
 final class SyncEngine {

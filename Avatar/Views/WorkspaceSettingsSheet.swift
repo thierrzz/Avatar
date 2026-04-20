@@ -181,10 +181,26 @@ struct WorkspaceSettingsSheet: View {
         shareError = nil
         shareSuccess = false
 
+        let inviterName = auth.userName ?? auth.userEmail ?? "A colleague"
+        let deepLink = AvatarInvite.joinURL(
+            folderID: workspace.driveFolderID,
+            name: workspace.name
+        ).absoluteString
+        let message = Loc.inviteEmailBody(
+            inviterName: inviterName,
+            workspaceName: workspace.name,
+            downloadURL: AvatarInvite.downloadURL,
+            deepLink: deepLink
+        )
+
         Task {
             do {
                 let driveService = DriveService(authService: auth)
-                try await driveService.shareWithUser(fileID: workspace.driveFolderID, email: email)
+                try await driveService.shareWithUser(
+                    fileID: workspace.driveFolderID,
+                    email: email,
+                    emailMessage: message
+                )
                 shareSuccess = true
                 shareEmail = ""
             } catch {

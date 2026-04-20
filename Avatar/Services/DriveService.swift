@@ -122,15 +122,28 @@ actor DriveService {
 
     // MARK: - Sharing
 
-    /// Shares a file/folder with a user by email.
-    func shareWithUser(fileID: String, email: String, role: String = "writer") async throws {
-        let url = "\(baseURL)/files/\(fileID)/permissions"
+    /// Shares a file/folder with a user by email. Asks Drive to send the
+    /// notification email with an optional custom message (used to embed
+    /// the Avatar download link and `avatar://join` deep link).
+    func shareWithUser(
+        fileID: String,
+        email: String,
+        role: String = "writer",
+        emailMessage: String? = nil
+    ) async throws {
+        var components = URLComponents(string: "\(baseURL)/files/\(fileID)/permissions")!
+        var query: [URLQueryItem] = [URLQueryItem(name: "sendNotificationEmail", value: "true")]
+        if let emailMessage {
+            query.append(URLQueryItem(name: "emailMessage", value: emailMessage))
+        }
+        components.queryItems = query
+
         let body: [String: Any] = [
             "type": "user",
             "role": role,
             "emailAddress": email
         ]
-        var request = try await authorizedRequest(url: url, method: "POST")
+        var request = try await authorizedRequest(url: components.url!.absoluteString, method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 

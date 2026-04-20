@@ -416,6 +416,32 @@ enum Loc {
     static var owner: String           { en ? "Owner" : "Eigenaar" }
     static var lastSynced: String      { en ? "Last synced" : "Laatst gesynchroniseerd" }
     static var shareSuccess: String    { en ? "Invitation sent" : "Uitnodiging verstuurd" }
+    static func inviteEmailBody(
+        inviterName: String,
+        workspaceName: String,
+        downloadURL: String,
+        deepLink: String
+    ) -> String {
+        if en {
+            return """
+            \(inviterName) invited you to collaborate on "\(workspaceName)" in Avatar.
+
+            Avatar is a macOS app for editing and sharing portrait libraries.
+
+            1. Download Avatar: \(downloadURL)
+            2. Open this link to join the workspace once installed: \(deepLink)
+            """
+        } else {
+            return """
+            \(inviterName) heeft je uitgenodigd om samen te werken aan "\(workspaceName)" in Avatar.
+
+            Avatar is een macOS-app voor het bewerken en delen van portretbibliotheken.
+
+            1. Download Avatar: \(downloadURL)
+            2. Open deze link om deel te nemen zodra Avatar is geïnstalleerd: \(deepLink)
+            """
+        }
+    }
     static var addToWorkspace: String  { en ? "Add items" : "Items toevoegen" }
     static var addToWorkspaceDesc: String {
         en ? "Add your local portraits and backgrounds to this workspace for syncing."
