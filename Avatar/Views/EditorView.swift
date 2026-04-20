@@ -27,12 +27,11 @@ struct EditorView: View {
     @AppStorage("editorTab") private var editorTab: EditorTab = .portrait
 
     enum EditorTab: String, CaseIterable, Identifiable {
-        case portrait, enhance, adjust
+        case portrait, adjust
         var id: String { rawValue }
         var label: String {
             switch self {
             case .portrait: return Loc.tabPortrait
-            case .enhance:  return Loc.tabEnhance
             case .adjust:   return Loc.tabAdjust
             }
         }
@@ -378,7 +377,6 @@ struct EditorView: View {
             Form {
                 switch editorTab {
                 case .portrait: portraitTab
-                case .enhance:  enhanceTab
                 case .adjust:   adjustTab
                 }
             }
@@ -460,6 +458,8 @@ struct EditorView: View {
         } header: {
             Text(Loc.positionScale)
         }
+
+        enhanceSection
     }
 
     private var scaleControl: some View {
@@ -526,9 +526,9 @@ struct EditorView: View {
         #endif
     }
 
-    // MARK: Enhance tab
+    // MARK: Enhance section (lives inside the Portrait tab)
 
-    @ViewBuilder private var enhanceTab: some View {
+    @ViewBuilder private var enhanceSection: some View {
         Section {
             enhanceCard(
                 title: Loc.reCutout,
