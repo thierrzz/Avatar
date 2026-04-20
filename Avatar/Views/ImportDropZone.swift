@@ -26,7 +26,7 @@ struct ImportDropZone: View {
                 .foregroundStyle(hovering ? Color.accentColor : Color.secondary.opacity(0.4))
                 .padding(40)
         )
-        .onDrop(of: [.fileURL, .image], isTargeted: $hovering) { providers in
+        .onDrop(of: [.fileURL, .image, .avatarLibrary], isTargeted: $hovering) { providers in
             PortraitDropHandler.handle(providers: providers, context: context, appState: appState,
                                            modelManager: modelManager)
         }

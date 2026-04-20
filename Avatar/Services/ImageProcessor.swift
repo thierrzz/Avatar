@@ -431,13 +431,34 @@ enum ImageProcessor {
             "inputEpsilon": 0.0002
         ]).cropped(to: extent)
 
+        // Tighten the edge: erode by <1px to kill background-colour bleed,
+        // then a gentle blur smooths aliasing, then a contrast curve makes
+        // the matte commit (either hair or transparent — no muddy halo).
+        // Mirrors the refinement in refineAlphaMatte() for the Vision path.
+        let eroded = guided.applyingFilter("CIMorphologyMinimum", parameters: [
+            kCIInputRadiusKey: 0.7
+        ])
+        let blurred = eroded.applyingFilter("CIGaussianBlur", parameters: [
+            kCIInputRadiusKey: 0.6
+        ])
+        let contrast = blurred.applyingFilter("CIColorMatrix", parameters: [
+            "inputRVector": CIVector(x: 1.15, y: 0, z: 0, w: 0),
+            "inputGVector": CIVector(x: 0, y: 1.15, z: 0, w: 0),
+            "inputBVector": CIVector(x: 0, y: 0, z: 1.15, w: 0),
+            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1.15),
+            "inputBiasVector": CIVector(x: -0.05, y: -0.05, z: -0.05, w: -0.05)
+        ])
+        let refined = contrast.applyingFilter("CIColorClamp", parameters: [
+            "inputMinComponents": CIVector(x: 0, y: 0, z: 0, w: 0),
+            "inputMaxComponents": CIVector(x: 1, y: 1, z: 1, w: 1)
+        ]).cropped(to: extent)
+
         // Composite: original RGB + BiRefNet alpha matte.
         let clearBG = CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 0))
             .cropped(to: extent)
-        let alphaMatte = guided.applyingFilter("CIMaskToAlpha")
         let composed = originalCI.applyingFilter("CIBlendWithMask", parameters: [
             "inputBackgroundImage": clearBG,
-            "inputMaskImage": alphaMatte
+            "inputMaskImage": refined
         ]).cropped(to: extent)
 
         let outputCS = image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!

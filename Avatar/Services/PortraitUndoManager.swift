@@ -126,7 +126,7 @@ enum PortraitUndoManager {
     ) {
         guard let um = undoManager else { return }
         um.registerUndo(withTarget: context) { ctx in
-            apply(before, in: ctx, appState: appState)
+            applySnapshot(before, in: ctx, appState: appState)
             try? ctx.save()
             // The reverse registration creates the redo action.
             registerUndo(
@@ -141,7 +141,9 @@ enum PortraitUndoManager {
         um.setActionName(actionName)
     }
 
-    private static func apply(_ snap: Snapshot, in context: ModelContext, appState: AppState?) {
+    /// Applies a snapshot to the corresponding portrait. Used internally and
+    /// by `BatchOperations` for batch undo/redo.
+    static func applySnapshot(_ snap: Snapshot, in context: ModelContext, appState: AppState?) {
         let id = snap.id
         let descriptor = FetchDescriptor<Portrait>(predicate: #Predicate { $0.id == id })
         guard let portrait = try? context.fetch(descriptor).first else { return }

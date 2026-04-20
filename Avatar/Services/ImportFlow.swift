@@ -4,6 +4,33 @@ import AppKit
 import UniformTypeIdentifiers
 import CoreML
 
+/// Thread-safe collector that gathers image data from multiple NSItemProviders.
+/// All loads MUST be kicked off synchronously (before the drop handler returns)
+/// so the system keeps the providers alive. The `onComplete` callback fires on
+/// the main queue once every provider has reported.
+private final class DropDataCollector: @unchecked Sendable {
+    struct Item: Sendable { let data: Data; let name: String }
+    private var items: [Item] = []
+    private let lock = NSLock()
+    private var remaining: Int
+    private let onComplete: @Sendable ([Item]) -> Void
+
+    init(count: Int, onComplete: @escaping @Sendable ([Item]) -> Void) {
+        self.remaining = count
+        self.onComplete = onComplete
+    }
+
+    func report(_ item: Item?) {
+        lock.lock()
+        if let item { items.append(item) }
+        remaining -= 1
+        let done = remaining <= 0
+        let result = done ? items : nil
+        lock.unlock()
+        if let result { onComplete(result) }
+    }
+}
+
 /// Centralised drop-handler used by every view that should accept a portrait
 /// drag-and-drop (the empty-state import zone AND the editor surface, so users
 /// can drop a fresh photo at any time without going back to an empty state).
@@ -13,54 +40,109 @@ enum PortraitDropHandler {
                        context: ModelContext,
                        appState: AppState,
                        modelManager: ModelManager? = nil) -> Bool {
-        guard let provider = providers.first else { return false }
+        guard !providers.isEmpty else { return false }
+
+        let fileURLType = UTType.fileURL.identifier
+        let imageType = UTType.image.identifier
+
         // Show feedback immediately — the loaders below are async.
         appState.isProcessing = true
 
-        let fileURLType = UTType.fileURL.identifier
-        if provider.hasItemConformingToTypeIdentifier(fileURLType) {
-            provider.loadDataRepresentation(forTypeIdentifier: fileURLType) { data, _ in
-                guard let data,
-                      let urlString = String(data: data, encoding: .utf8),
-                      let url = URL(string: urlString) ?? URL(dataRepresentation: data, relativeTo: nil)
-                else {
-                    Task { @MainActor in
-                        appState.isProcessing = false
-                        appState.lastError = Loc.dropPhotoNotFound
-                        print("[Drop] failed to decode file URL")
+        // Single provider → original fast path (unchanged, proven to work).
+        if providers.count == 1, let provider = providers.first {
+            if provider.hasItemConformingToTypeIdentifier(fileURLType) {
+                provider.loadDataRepresentation(forTypeIdentifier: fileURLType) { data, _ in
+                    guard let data,
+                          let urlString = String(data: data, encoding: .utf8),
+                          let url = URL(string: urlString) ?? URL(dataRepresentation: data, relativeTo: nil)
+                    else {
+                        Task { @MainActor in
+                            appState.isProcessing = false
+                            appState.lastError = Loc.dropPhotoNotFound
+                        }
+                        return
                     }
-                    return
+                    Task { @MainActor in
+                        if url.pathExtension.lowercased() == "avatarlib" {
+                            appState.isProcessing = false
+                            appState.libraryImportURL = url
+                            return
+                        }
+                        ImportFlow.importFile(url: url, context: context, appState: appState,
+                                             modelManager: modelManager)
+                    }
                 }
-                Task { @MainActor in
-                    ImportFlow.importFile(url: url, context: context, appState: appState,
-                                         modelManager: modelManager)
-                }
+                return true
             }
-            return true
+            if provider.hasItemConformingToTypeIdentifier(imageType) {
+                provider.loadDataRepresentation(forTypeIdentifier: imageType) { data, _ in
+                    guard let data else {
+                        Task { @MainActor in
+                            appState.isProcessing = false
+                            appState.lastError = Loc.dropImageUnreadable
+                        }
+                        return
+                    }
+                    Task { @MainActor in
+                        ImportFlow.importData(data, suggestedName: Loc.imported,
+                                              context: context, appState: appState,
+                                              modelManager: modelManager)
+                    }
+                }
+                return true
+            }
+            appState.isProcessing = false
+            appState.lastError = Loc.unknownFileType
+            return false
         }
 
-        let imageType = UTType.image.identifier
-        if provider.hasItemConformingToTypeIdentifier(imageType) {
-            provider.loadDataRepresentation(forTypeIdentifier: imageType) { data, _ in
-                guard let data else {
-                    Task { @MainActor in
-                        appState.isProcessing = false
-                        appState.lastError = Loc.dropImageUnreadable
-                    }
-                    return
-                }
-                Task { @MainActor in
-                    ImportFlow.importData(data, suggestedName: Loc.imported,
-                                          context: context, appState: appState,
-                                          modelManager: modelManager)
-                }
-            }
-            return true
+        // Multiple providers → read raw image DATA from each provider (not URLs).
+        // This bypasses all security-scoped / sandbox issues since the system
+        // copies the bytes for us.
+        let eligible = providers.filter {
+            $0.hasItemConformingToTypeIdentifier(fileURLType)
+                || $0.hasItemConformingToTypeIdentifier(imageType)
+        }
+        guard !eligible.isEmpty else {
+            appState.isProcessing = false
+            appState.lastError = Loc.unknownFileType
+            return false
         }
 
-        appState.isProcessing = false
-        appState.lastError = Loc.unknownFileType
-        return false
+        print("[Drop] batch: \(eligible.count) providers")
+
+        let collector = DropDataCollector(count: eligible.count) { items in
+            DispatchQueue.main.async {
+                guard !items.isEmpty else {
+                    appState.isProcessing = false
+                    appState.lastError = Loc.dropPhotoNotFound
+                    print("[Drop] batch: all providers failed to load data")
+                    return
+                }
+                print("[Drop] batch: collected \(items.count) items, starting import")
+                ImportFlow.importDataBatch(items: items.map { ($0.data, $0.name) },
+                                           context: context, appState: appState,
+                                           modelManager: modelManager)
+            }
+        }
+
+        for provider in eligible {
+            // Try to extract the filename from the file URL type first.
+            let suggestedName = provider.suggestedName ?? Loc.imported
+
+            // Prefer loading as image data — works regardless of sandbox.
+            let loadType = provider.hasItemConformingToTypeIdentifier(imageType) ? imageType : fileURLType
+            provider.loadDataRepresentation(forTypeIdentifier: loadType) { data, error in
+                if let data, !data.isEmpty {
+                    collector.report(.init(data: data, name: suggestedName))
+                } else {
+                    print("[Drop] batch: provider failed: \(error?.localizedDescription ?? "no data")")
+                    collector.report(nil)
+                }
+            }
+        }
+
+        return true
     }
 }
 
@@ -104,6 +186,198 @@ enum ImportFlow {
         let birefnet = (modelManager?.useAdvancedModel == true) ? modelManager?.loadModel() : nil
         runPipeline(cg: cg, originalData: data, suggestedName: suggestedName,
                     context: context, appState: appState, birefnetModel: birefnet)
+    }
+
+    // MARK: - Batch Import
+
+    /// Imports multiple image files in one go, processing them sequentially to
+    /// avoid memory pressure. Updates `batchCompleted` / `batchTotal` on
+    /// `appState` so the UI can show a determinate progress bar. After
+    /// completion the newly created portraits are auto-selected.
+    static func importFiles(urls: [URL], context: ModelContext, appState: AppState,
+                            modelManager: ModelManager? = nil) {
+        guard !urls.isEmpty else { return }
+        appState.isProcessing = true
+        appState.lastError = nil
+        appState.resetBatchState()
+        appState.batchTotal = urls.count
+
+        let birefnet = (modelManager?.useAdvancedModel == true) ? modelManager?.loadModel() : nil
+
+        // Read file data on main thread (security-scoped access required).
+        struct FileItem { let data: Data; let name: String }
+        var items: [FileItem] = []
+        for url in urls {
+            let needsScope = url.startAccessingSecurityScopedResource()
+            defer { if needsScope { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url) else {
+                appState.batchCompleted += 1
+                appState.batchErrors.append(Loc.cannotReadFile(url.lastPathComponent))
+                continue
+            }
+            items.append(FileItem(data: data, name: url.deletingPathExtension().lastPathComponent))
+        }
+
+        Task.detached(priority: .userInitiated) {
+            var newIDs: [UUID] = []
+
+            for item in items {
+                // Check cancellation.
+                let cancelled = await MainActor.run { appState.isBatchCancelled }
+                if cancelled { break }
+
+                do {
+                    guard let cg = ImageProcessor.cgImage(from: item.data) else {
+                        await MainActor.run {
+                            appState.batchCompleted += 1
+                            appState.batchErrors.append("\(item.name): \(Loc.cannotDecodeImage)")
+                        }
+                        continue
+                    }
+
+                    let processed = try ImageProcessor.process(image: cg, birefnetModel: birefnet)
+                    let cutoutSize = CGSize(width: processed.cutout.width, height: processed.cutout.height)
+                    let face = processed.faceRect ?? .zero
+                    let bodyBottom = processed.bodyBottomY
+                    let transform = (processed.faceRect != nil)
+                        ? AutoAligner.computeTransform(
+                            faceRect: face,
+                            eyeCenter: processed.eyeCenter,
+                            interEyeDistance: processed.interEyeDistance,
+                            cutoutSize: cutoutSize,
+                            bodyBottomY: bodyBottom)
+                        : AutoAligner.fitTransform(cutoutSize: cutoutSize)
+
+                    let pngData = ImageProcessor.pngData(from: processed.cutout) ?? Data()
+
+                    let id = await MainActor.run { () -> UUID in
+                        let portrait = Portrait(
+                            name: item.name,
+                            cutoutPNG: pngData,
+                            originalImageData: item.data,
+                            faceRect: face,
+                            eyeCenter: processed.eyeCenter,
+                            interEyeDistance: Double(processed.interEyeDistance ?? 0),
+                            bodyBottomY: Double(bodyBottom),
+                            offsetX: Double(transform.offset.width),
+                            offsetY: Double(transform.offset.height),
+                            scale: Double(transform.scale)
+                        )
+                        portrait.isAdvancedCutout = (birefnet != nil)
+                        context.insert(portrait)
+                        appState.batchCompleted += 1
+                        return portrait.id
+                    }
+                    newIDs.append(id)
+                } catch {
+                    await MainActor.run {
+                        appState.batchCompleted += 1
+                        appState.batchErrors.append("\(item.name): \(error.localizedDescription)")
+                    }
+                }
+            }
+
+            await MainActor.run {
+                try? context.save()
+                // Auto-select all newly imported portraits.
+                appState.selectedPortraitIDs = Set(newIDs)
+                appState.isProcessing = false
+                if !appState.batchErrors.isEmpty {
+                    appState.lastError = Loc.batchImportErrors(
+                        succeeded: newIDs.count,
+                        failed: appState.batchErrors.count)
+                }
+                print("[BatchImport] DONE imported=\(newIDs.count) errors=\(appState.batchErrors.count)")
+            }
+        }
+    }
+
+    /// Batch-imports multiple images from raw data (used by multi-provider drop).
+    /// Works like `importFiles` but skips file I/O since bytes are already loaded.
+    static func importDataBatch(items: [(Data, String)],
+                                context: ModelContext, appState: AppState,
+                                modelManager: ModelManager? = nil) {
+        guard !items.isEmpty else {
+            appState.isProcessing = false
+            return
+        }
+        appState.lastError = nil
+        appState.resetBatchState()
+        appState.batchTotal = items.count
+
+        let birefnet = (modelManager?.useAdvancedModel == true) ? modelManager?.loadModel() : nil
+
+        Task.detached(priority: .userInitiated) {
+            var newIDs: [UUID] = []
+
+            for (data, name) in items {
+                let cancelled = await MainActor.run { appState.isBatchCancelled }
+                if cancelled { break }
+
+                do {
+                    guard let cg = ImageProcessor.cgImage(from: data) else {
+                        await MainActor.run {
+                            appState.batchCompleted += 1
+                            appState.batchErrors.append("\(name): \(Loc.cannotDecodeImage)")
+                        }
+                        continue
+                    }
+
+                    let processed = try ImageProcessor.process(image: cg, birefnetModel: birefnet)
+                    let cutoutSize = CGSize(width: processed.cutout.width, height: processed.cutout.height)
+                    let face = processed.faceRect ?? .zero
+                    let bodyBottom = processed.bodyBottomY
+                    let transform = (processed.faceRect != nil)
+                        ? AutoAligner.computeTransform(
+                            faceRect: face,
+                            eyeCenter: processed.eyeCenter,
+                            interEyeDistance: processed.interEyeDistance,
+                            cutoutSize: cutoutSize,
+                            bodyBottomY: bodyBottom)
+                        : AutoAligner.fitTransform(cutoutSize: cutoutSize)
+
+                    let pngData = ImageProcessor.pngData(from: processed.cutout) ?? Data()
+
+                    let id = await MainActor.run { () -> UUID in
+                        let portrait = Portrait(
+                            name: name,
+                            cutoutPNG: pngData,
+                            originalImageData: data,
+                            faceRect: face,
+                            eyeCenter: processed.eyeCenter,
+                            interEyeDistance: Double(processed.interEyeDistance ?? 0),
+                            bodyBottomY: Double(bodyBottom),
+                            offsetX: Double(transform.offset.width),
+                            offsetY: Double(transform.offset.height),
+                            scale: Double(transform.scale)
+                        )
+                        portrait.isAdvancedCutout = (birefnet != nil)
+                        context.insert(portrait)
+                        appState.batchCompleted += 1
+                        print("[BatchImport] done \(name) id=\(portrait.id)")
+                        return portrait.id
+                    }
+                    newIDs.append(id)
+                } catch {
+                    await MainActor.run {
+                        appState.batchCompleted += 1
+                        appState.batchErrors.append("\(name): \(error.localizedDescription)")
+                    }
+                }
+            }
+
+            await MainActor.run {
+                try? context.save()
+                appState.selectedPortraitIDs = Set(newIDs)
+                appState.isProcessing = false
+                if !appState.batchErrors.isEmpty {
+                    appState.lastError = Loc.batchImportErrors(
+                        succeeded: newIDs.count,
+                        failed: appState.batchErrors.count)
+                }
+                print("[BatchImport] DONE imported=\(newIDs.count) errors=\(appState.batchErrors.count)")
+            }
+        }
     }
 
     /// Variant for when raw image bytes are already in memory (e.g. dragged from
@@ -174,6 +448,9 @@ enum ImportFlow {
                     fresh.bodyBottomY = Double(processed.bodyBottomY)
                     fresh.isMagicRetouched = false
                     fresh.preRetouchPNG = nil
+                    fresh.isAdvancedCutout = (birefnet != nil)
+                    fresh.didUpgradeCutout = false
+                    fresh.preCutoutPNG = nil
                     fresh.updatedAt = Date()
                     try? context.save()
                     // Purge any cached decoded cutout so the editor shows the
@@ -267,9 +544,12 @@ enum ImportFlow {
                     // (cutoutW_new × scale_new == cutoutW_old × scale_old)
                     fresh.scale /= 2.0
                     fresh.isUpscaled = true
+                    fresh.isAdvancedCutout = (birefnet != nil)
                     // Reset magic retouch flag since we have a fresh cutout
                     fresh.isMagicRetouched = false
                     fresh.preRetouchPNG = nil
+                    fresh.didUpgradeCutout = false
+                    fresh.preCutoutPNG = nil
                     fresh.updatedAt = Date()
                     try? context.save()
                     appState.invalidateCutout(for: fresh)
@@ -290,9 +570,12 @@ enum ImportFlow {
 
     /// Applies a one-click studio-quality enhancement (Apple auto-adjust +
     /// vibrance + shadow lift + warmth + sharpen) to the portrait's cutout.
+    /// When the advanced BiRefNet model is available but hasn't been used for
+    /// this portrait yet, the cutout is automatically upgraded first.
     /// The enhanced version replaces `cutoutPNG`; manual adjustment sliders
-    /// still layer on top at render time. "Opnieuw uitknippen" serves as undo.
-    static func magicRetouch(portrait: Portrait, context: ModelContext, appState: AppState) {
+    /// still layer on top at render time.
+    static func magicRetouch(portrait: Portrait, context: ModelContext, appState: AppState,
+                             modelManager: ModelManager? = nil) {
         guard !portrait.isMagicRetouched else {
             appState.lastError = Loc.magicRetouchAlready
             return
@@ -303,13 +586,50 @@ enum ImportFlow {
             return
         }
 
+        // Determine if we should also upgrade the cutout to BiRefNet.
+        let shouldUpgrade = modelManager?.isAvailable == true
+            && modelManager?.useAdvancedModel == true
+            && !portrait.isAdvancedCutout
+            && portrait.originalImageData != nil
+
         appState.isProcessing = true
         appState.lastError = nil
-        print("[MagicRetouch] start id=\(portrait.id) \(cutoutCG.width)×\(cutoutCG.height)")
+
+        // Load the advanced model on the main thread before dispatching.
+        let birefnet = shouldUpgrade ? modelManager?.loadModel() : nil
+        let originalData = shouldUpgrade ? portrait.originalImageData : nil
+
+        print("[MagicRetouch] start id=\(portrait.id) \(cutoutCG.width)×\(cutoutCG.height) upgrade=\(shouldUpgrade)")
 
         let portraitID = portrait.id
         Task.detached(priority: .userInitiated) {
-            guard let enhanced = ImageProcessor.magicRetouch(image: cutoutCG) else {
+            // Step 1: optionally upgrade the cutout to BiRefNet.
+            var baseCutout = cutoutCG
+            var upgradedPNG: Data?
+            var upgradedFaceRect: CGRect?
+            var upgradedEyeCenter: CGPoint?
+            var upgradedIED: Double?
+            var upgradedBodyBottom: CGFloat?
+
+            if let model = birefnet, let origData = originalData,
+               let originalCG = ImageProcessor.cgImage(from: origData) {
+                do {
+                    let processed = try ImageProcessor.process(image: originalCG, birefnetModel: model)
+                    baseCutout = processed.cutout
+                    upgradedPNG = ImageProcessor.pngData(from: processed.cutout)
+                    upgradedFaceRect = processed.faceRect
+                    upgradedEyeCenter = processed.eyeCenter
+                    upgradedIED = processed.interEyeDistance.map(Double.init)
+                    upgradedBodyBottom = processed.bodyBottomY
+                    print("[MagicRetouch] cutout upgraded via BiRefNet")
+                } catch {
+                    // Fallback: proceed with retouch on the existing cutout.
+                    print("[MagicRetouch] BiRefNet upgrade failed, continuing with existing cutout: \(error)")
+                }
+            }
+
+            // Step 2: apply Magic Retouch filters.
+            guard let enhanced = ImageProcessor.magicRetouch(image: baseCutout) else {
                 await MainActor.run {
                     appState.lastError = Loc.magicRetouchFailed
                     appState.isProcessing = false
@@ -328,22 +648,55 @@ enum ImportFlow {
                     appState.lastError = Loc.portraitNotFound
                     return
                 }
-                fresh.preRetouchPNG = fresh.cutoutPNG
+
+                let didUpgrade = (upgradedPNG != nil)
+
+                if didUpgrade {
+                    // Back up the old (Apple Vision) cutout for combined undo.
+                    fresh.preCutoutPNG = fresh.cutoutPNG
+                    // Store the upgraded-but-unretouched cutout as preRetouchPNG
+                    // so toggling retouch off still keeps the upgraded cutout…
+                    // but we use preCutoutPNG for the full undo path.
+                    fresh.preRetouchPNG = upgradedPNG
+                    fresh.isAdvancedCutout = true
+                    fresh.didUpgradeCutout = true
+                    // Update face metrics from the new cutout.
+                    if let fr = upgradedFaceRect { fresh.faceRect = fr }
+                    if let ec = upgradedEyeCenter { fresh.eyeCenter = ec }
+                    if let ied = upgradedIED { fresh.interEyeDistance = ied }
+                    if let bb = upgradedBodyBottom { fresh.bodyBottomY = Double(bb) }
+                } else {
+                    fresh.preRetouchPNG = fresh.cutoutPNG
+                    fresh.didUpgradeCutout = false
+                }
+
                 fresh.cutoutPNG = pngData
                 fresh.isMagicRetouched = true
                 fresh.updatedAt = Date()
                 try? context.save()
                 appState.invalidateCutout(for: fresh)
                 appState.isProcessing = false
-                print("[MagicRetouch] DONE id=\(fresh.id)")
+                print("[MagicRetouch] DONE id=\(fresh.id) upgraded=\(didUpgrade)")
             }
         }
     }
 
     /// Reverts Magic Retouch by restoring the pre-retouch cutout.
+    /// When the retouch also upgraded the cutout model, both changes are undone.
     static func undoMagicRetouch(portrait: Portrait, context: ModelContext, appState: AppState) {
-        guard portrait.isMagicRetouched, let original = portrait.preRetouchPNG else { return }
-        portrait.cutoutPNG = original
+        guard portrait.isMagicRetouched else { return }
+
+        if portrait.didUpgradeCutout, let originalCutout = portrait.preCutoutPNG {
+            // Combined undo: restore the pre-upgrade (Apple Vision) cutout.
+            portrait.cutoutPNG = originalCutout
+            portrait.preCutoutPNG = nil
+            portrait.isAdvancedCutout = false
+            portrait.didUpgradeCutout = false
+        } else if let preRetouch = portrait.preRetouchPNG {
+            // Simple undo: restore pre-retouch cutout (same cutout model).
+            portrait.cutoutPNG = preRetouch
+        }
+
         portrait.preRetouchPNG = nil
         portrait.isMagicRetouched = false
         portrait.updatedAt = Date()
@@ -394,6 +747,7 @@ enum ImportFlow {
                         offsetY: Double(transform.offset.height),
                         scale: Double(transform.scale)
                     )
+                    portrait.isAdvancedCutout = (birefnetModel != nil)
                     context.insert(portrait)
                     try? context.save()
                     appState.selectedPortraitID = portrait.id

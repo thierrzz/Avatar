@@ -9,10 +9,62 @@ enum SettingsTab: String {
 @MainActor
 @Observable
 final class AppState {
-    var selectedPortraitID: UUID?
+    /// The set of currently selected portrait IDs (supports multi-select).
+    var selectedPortraitIDs: Set<UUID> = []
+
+    /// Convenience for single-selection. Returns the ID only when exactly one
+    /// portrait is selected; setting it replaces the entire selection.
+    var selectedPortraitID: UUID? {
+        get { selectedPortraitIDs.count == 1 ? selectedPortraitIDs.first : nil }
+        set {
+            if let id = newValue { selectedPortraitIDs = [id] }
+            else { selectedPortraitIDs.removeAll() }
+        }
+    }
+
+    var isBatchSelected: Bool { selectedPortraitIDs.count > 1 }
+
     var isImporting = false
     var isProcessing = false
     var lastError: String?
+
+    // MARK: - Batch progress
+
+    var batchTotal: Int = 0
+    var batchCompleted: Int = 0
+    var batchErrors: [String] = []
+    var isBatchCancelled = false
+
+    var batchProgress: Double {
+        batchTotal > 0 ? Double(batchCompleted) / Double(batchTotal) : 0
+    }
+
+    func resetBatchState() {
+        batchTotal = 0
+        batchCompleted = 0
+        batchErrors = []
+        isBatchCancelled = false
+    }
+
+    // MARK: - Workspace selection
+
+    /// The currently selected workspace. `nil` means "My Library" (all local portraits).
+    /// Persisted in UserDefaults so the selection survives app restarts.
+    var selectedWorkspaceID: UUID? = UserDefaults.standard.string(forKey: "selectedWorkspaceID")
+        .flatMap({ UUID(uuidString: $0) }) {
+        didSet {
+            if let id = selectedWorkspaceID {
+                UserDefaults.standard.set(id.uuidString, forKey: "selectedWorkspaceID")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "selectedWorkspaceID")
+            }
+        }
+    }
+
+    var isViewingWorkspace: Bool { selectedWorkspaceID != nil }
+
+    /// When set, the main window presents the library import sheet for this URL.
+    var libraryImportURL: URL?
 
     /// Which tab to select when the Settings window opens.
     var selectedSettingsTab: SettingsTab = .backgrounds

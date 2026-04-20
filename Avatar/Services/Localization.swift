@@ -51,7 +51,7 @@ enum Loc {
     static var export: String          { en ? "Export" : "Exporteer" }
 
     // MARK: Editor – Info section
-    static var employeeName: String    { en ? "Employee name" : "Naam medewerker" }
+    static var employeeName: String    { en ? "Name" : "Naam" }
     static var role: String            { en ? "Role" : "Rol" }
 
     // MARK: Editor – Background
@@ -88,12 +88,16 @@ enum Loc {
         en ? "Undo Magic Retouch" : "Magic Retouch ongedaan maken"
     }
     static var magicRetouchAlready: String {
-        en ? "Magic Retouch has already been applied. Use 'Re-cutout' to revert."
-           : "Magic Retouch is al toegepast. Gebruik 'Opnieuw uitknippen' om te herstellen."
+        en ? "Magic Retouch has already been applied. Click again to undo."
+           : "Magic Retouch is al toegepast. Klik nogmaals om ongedaan te maken."
     }
     static var magicRetouchHelp: String {
         en ? "Automatically enhances colors, exposure, and shadows for studio quality."
            : "Verbetert automatisch kleuren, belichting en schaduwen voor studiokwaliteit."
+    }
+    static var magicRetouchWithUpgradeHelp: String {
+        en ? "Upgrades the cutout with the advanced AI model and enhances colors for studio quality."
+           : "Verbetert de uitknip met het geavanceerde AI-model en optimaliseert kleuren voor studiokwaliteit."
     }
     static var magicRetouchUndoHelp: String {
         en ? "Revert to the original cutout without Magic Retouch."
@@ -340,4 +344,159 @@ enum Loc {
 
     // MARK: Seed data
     static var defaultBg: String       { en ? "Default" : "Standaard" }
+
+    // MARK: Library export/import
+    static var exportLibrary: String   { en ? "Export Library…" : "Exporteer bibliotheek…" }
+    static var importLibrary: String   { en ? "Import Library…" : "Importeer bibliotheek…" }
+    static var exportLibraryTitle: String { en ? "Export Library" : "Exporteer bibliotheek" }
+    static var importLibraryTitle: String { en ? "Import Library" : "Importeer bibliotheek" }
+    static var selectAll: String       { en ? "Select All" : "Selecteer alles" }
+    static var deselectAll: String     { en ? "Deselect All" : "Deselecteer alles" }
+    static var includeBackgrounds: String { en ? "Include backgrounds" : "Inclusief achtergronden" }
+    static var includeExportPresets: String { en ? "Include export presets" : "Inclusief export-presets" }
+    static var exporting: String       { en ? "Exporting…" : "Exporteren…" }
+    static var importing: String       { en ? "Importing…" : "Importeren…" }
+    static var exportComplete: String  { en ? "Export complete" : "Export voltooid" }
+    static var importComplete: String  { en ? "Import complete" : "Import voltooid" }
+    static func estimatedSize(_ size: String) -> String {
+        en ? "Estimated size: \(size)" : "Geschatte grootte: \(size)"
+    }
+    static func portraitsCount(_ n: Int) -> String {
+        en ? "\(n) portrait\(n == 1 ? "" : "s")"
+           : "\(n) portret\(n == 1 ? "" : "ten")"
+    }
+    static func backgroundsCount(_ n: Int) -> String {
+        en ? "\(n) background\(n == 1 ? "" : "s")"
+           : "\(n) achtergrond\(n == 1 ? "" : "en")"
+    }
+    static func presetsCount(_ n: Int) -> String {
+        en ? "\(n) preset\(n == 1 ? "" : "s")"
+           : "\(n) preset\(n == 1 ? "" : "s")"
+    }
+
+    // Import conflict resolution
+    static var importSkip: String      { en ? "Skip duplicates" : "Sla duplicaten over" }
+    static var importReplace: String   { en ? "Replace existing" : "Vervang bestaande" }
+    static var importCopy: String      { en ? "Import as copies" : "Importeer als kopieën" }
+    static var conflictsFound: String  { en ? "Conflicts found" : "Conflicten gevonden" }
+    static func conflictMessage(_ n: Int) -> String {
+        en ? "\(n) item\(n == 1 ? "" : "s") already exist\(n == 1 ? "s" : "") in your library."
+           : "\(n) item\(n == 1 ? "" : "s") bestaa\(n == 1 ? "t" : "n") al in je bibliotheek."
+    }
+    static var importButton: String    { en ? "Import" : "Importeer" }
+    static func importResult(_ imported: Int, _ skipped: Int) -> String {
+        let imp = en ? "\(imported) imported" : "\(imported) geïmporteerd"
+        if skipped > 0 {
+            let sk = en ? "\(skipped) skipped" : "\(skipped) overgeslagen"
+            return "\(imp), \(sk)"
+        }
+        return imp
+    }
+    static func importErrors(_ n: Int) -> String {
+        en ? "\(n) error\(n == 1 ? "" : "s") occurred during import."
+           : "\(n) fout\(n == 1 ? "" : "en") opgetreden tijdens import."
+    }
+    static var updateRequired: String {
+        en ? "Please update Avatar to open this library."
+           : "Werk Avatar bij om deze bibliotheek te openen."
+    }
+    static var invalidLibraryFile: String {
+        en ? "This file is not a valid Avatar library."
+           : "Dit bestand is geen geldige Avatar-bibliotheek."
+    }
+
+    // MARK: Cloud workspaces
+    static var signInWithGoogle: String { en ? "Sign in with Google" : "Inloggen met Google" }
+    static var signOut: String         { en ? "Sign Out" : "Uitloggen" }
+    static var workspaces: String      { "Workspaces" }
+    static var newWorkspace: String    { en ? "New Workspace" : "Nieuwe workspace" }
+    static var workspaceSettings: String { en ? "Workspace Settings" : "Workspace-instellingen" }
+    static var shareWorkspace: String  { en ? "Invite" : "Uitnodigen" }
+    static var share: String           { en ? "Invite" : "Nodig uit" }
+    static var owner: String           { en ? "Owner" : "Eigenaar" }
+    static var lastSynced: String      { en ? "Last synced" : "Laatst gesynchroniseerd" }
+    static var shareSuccess: String    { en ? "Invitation sent" : "Uitnodiging verstuurd" }
+    static var addToWorkspace: String  { en ? "Add items" : "Items toevoegen" }
+    static var addToWorkspaceDesc: String {
+        en ? "Add your local portraits and backgrounds to this workspace for syncing."
+           : "Voeg je lokale portretten en achtergronden toe aan deze workspace om te synchroniseren."
+    }
+    static var addAllPortraits: String { en ? "Add all portraits" : "Voeg alle portretten toe" }
+    static var addAllBackgrounds: String { en ? "Add all backgrounds" : "Voeg alle achtergronden toe" }
+    static var syncing: String         { en ? "Syncing…" : "Synchroniseren…" }
+    static var syncComplete: String    { en ? "Sync complete" : "Synchronisatie voltooid" }
+    static var syncError: String       { en ? "Sync error" : "Synchronisatiefout" }
+    static var conflictDetected: String { en ? "Conflict detected" : "Conflict gedetecteerd" }
+    static var keepLocal: String       { en ? "Keep local" : "Behoud lokaal" }
+    static var keepRemote: String      { en ? "Keep remote" : "Behoud extern" }
+
+    // Workspace switcher
+    static var myLibrary: String       { en ? "My Library" : "Mijn bibliotheek" }
+    static var noPortraitsInWorkspace: String { en ? "No portraits in this workspace" : "Geen portretten in deze workspace" }
+    static var addPortraitsHint: String { en ? "Open workspace settings to add portraits" : "Open workspace-instellingen om portretten toe te voegen" }
+    static var account: String         { en ? "Account" : "Account" }
+    static var createWorkspace: String { en ? "Create" : "Aanmaken" }
+    static var inviteMembers: String   { en ? "Invite" : "Uitnodigen" }
+    static var driveFolder: String     { en ? "Drive folder" : "Drive-map" }
+    static var openInDrive: String     { en ? "Open in Google Drive" : "Openen in Google Drive" }
+    static var myDrive: String         { en ? "My Drive" : "Mijn Drive" }
+    static var chooseFolder: String    { en ? "Choose" : "Kies" }
+    static var changeFolder: String    { en ? "Change" : "Wijzigen" }
+    static var changeLocation: String  { en ? "Change location" : "Locatie wijzigen" }
+    static var chooseDriveFolder: String { en ? "Choose Drive folder" : "Kies Drive-map" }
+    static var chooseFolderSubtitle: String { en ? "Your workspace files will be synced to this folder" : "Je workspace-bestanden worden naar deze map gesynchroniseerd" }
+    static var selectFolder: String    { en ? "Select this folder" : "Selecteer deze map" }
+    static var noFoldersFound: String  { en ? "No subfolders" : "Geen submappen" }
+    static var tryAgain: String        { en ? "Try again" : "Probeer opnieuw" }
+
+    // MARK: Move to workspace
+    static var moveTo: String          { en ? "Move to…" : "Verplaats naar…" }
+    static var moveToWorkspace: String { en ? "Move to workspace" : "Verplaats naar workspace" }
+    static var noWorkspacesAvailable: String { en ? "No other workspaces" : "Geen andere workspaces" }
+    static func movedCount(_ n: Int, _ ws: String) -> String {
+        en ? "\(n) portrait\(n == 1 ? "" : "s") moved to \(ws)"
+           : "\(n) portret\(n == 1 ? "" : "ten") verplaatst naar \(ws)"
+    }
+
+    // MARK: Batch operations
+    static func selectedCount(_ n: Int) -> String {
+        en ? "\(n) portraits selected" : "\(n) portretten geselecteerd"
+    }
+    static var batchAlign: String {
+        en ? "Auto-align selected" : "Selectie auto-uitlijnen"
+    }
+    static func batchAlignQuestion(_ n: Int) -> String {
+        en ? "Auto-align \(n) portraits?" : "\(n) portretten auto-uitlijnen?"
+    }
+    static func batchUpscaleCount(_ eligible: Int, _ total: Int) -> String {
+        en ? "Upscale 2× (\(eligible) of \(total))"
+           : "Opschalen 2× (\(eligible) van \(total))"
+    }
+    static func batchRetouchCount(_ eligible: Int, _ total: Int) -> String {
+        en ? "Magic Retouch (\(eligible) of \(total))"
+           : "Magic Retouch (\(eligible) van \(total))"
+    }
+    static func batchUndoRetouch(_ n: Int) -> String {
+        en ? "Undo Retouch (\(n))" : "Retouch ongedaan (\(n))"
+    }
+    static var batchApplyAdjustments: String {
+        en ? "Apply" : "Toepassen"
+    }
+    static var batchResetAdjustments: String {
+        en ? "Reset All" : "Alles herstellen"
+    }
+    static var batchSetBackground: String {
+        en ? "Set Background" : "Achtergrond instellen"
+    }
+    static func batchDelete(_ n: Int) -> String {
+        en ? "Delete \(n) portraits" : "Verwijder \(n) portretten"
+    }
+    static func batchDeleteConfirm(_ n: Int) -> String {
+        en ? "Delete \(n) portraits? This cannot be undone."
+           : "\(n) portretten verwijderen? Dit kan niet ongedaan worden gemaakt."
+    }
+    static func batchImportErrors(succeeded: Int, failed: Int) -> String {
+        en ? "\(succeeded) imported, \(failed) failed."
+           : "\(succeeded) geïmporteerd, \(failed) mislukt."
+    }
 }

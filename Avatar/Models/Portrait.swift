@@ -66,6 +66,16 @@ final class Portrait {
     /// Stores the pre-retouch cutout so Magic Retouch can be toggled off.
     @Attribute(.externalStorage) var preRetouchPNG: Data?
 
+    /// Whether the current cutoutPNG was produced by the BiRefNet advanced model.
+    /// false for legacy portraits and those processed with Apple Vision only.
+    var isAdvancedCutout: Bool = false
+    /// Whether the last Magic Retouch also upgraded the cutout model (BiRefNet).
+    /// Controls whether undoing retouch also reverts the cutout.
+    var didUpgradeCutout: Bool = false
+    /// Stores the pre-upgrade cutout when Magic Retouch also upgraded the cutout
+    /// model. Allows full undo back to the Apple Vision cutout.
+    @Attribute(.externalStorage) var preCutoutPNG: Data?
+
     init(
         id: UUID = UUID(),
         name: String = "",

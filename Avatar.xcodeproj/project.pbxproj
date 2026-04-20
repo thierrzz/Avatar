@@ -24,6 +24,9 @@
 		B7BE94756631FED1390881A5 /* AutoAligner.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECE2EA74BCD5AA894A3864C /* AutoAligner.swift */; };
 		B7EDC4EF58F5F0EDBAE8E873 /* ImportDropZone.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B1C3A5D25B8EA4299A5A39 /* ImportDropZone.swift */; };
 		BCB144F53A50F7E154817D1C /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 24422B485569134EE9164799 /* Sparkle */; };
+		D1A2B3C4E5F60718293A4B5C /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60718293A4B5D /* ZIPFoundation */; };
+		BB11CC22DD33EE44FF550001 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BB11CC22DD33EE44FF550011 /* GoogleSignIn */; };
+		BB11CC22DD33EE44FF550002 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB11CC22DD33EE44FF550012 /* GoogleSignInSwift */; };
 		C944B1F772FD3DFE3305D6C8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC7660BC4B678CC5A24BDEB7 /* SettingsView.swift */; };
 		CCDA297FDC7DB266C5C99205 /* AvatarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61EA8ABE1B5D7EDE1478FCF /* AvatarApp.swift */; };
 		D43723746F3532F825382CAB /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 349CA2BF8E0D0316D4C6EC9F /* Localization.swift */; };
@@ -34,6 +37,22 @@
 		EBE90C07C35BAA7F586C5E6D /* PortraitUndoManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7194822E14F9864C38869D98 /* PortraitUndoManager.swift */; };
 		EDCEBBF69658512E9483D13B /* SidebarUpdateCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33D997F6414EDD2CF3ED01B3 /* SidebarUpdateCard.swift */; };
 		F0D56262FE85216D1648099E /* ExportPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E1236EB27F5CE8A83B67DF /* ExportPreset.swift */; };
+		AA11BB22CC33DD44EE55FF01 /* LibraryManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF11 /* LibraryManifest.swift */; };
+		AA11BB22CC33DD44EE55FF02 /* UTType+Avatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF12 /* UTType+Avatar.swift */; };
+		AA11BB22CC33DD44EE55FF03 /* LibraryArchiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF13 /* LibraryArchiver.swift */; };
+		AA11BB22CC33DD44EE55FF04 /* LibraryImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF14 /* LibraryImporter.swift */; };
+		AA11BB22CC33DD44EE55FF05 /* LibraryExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF15 /* LibraryExportSheet.swift */; };
+		AA11BB22CC33DD44EE55FF06 /* LibraryImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF16 /* LibraryImportSheet.swift */; };
+		CC22DD33EE44FF55AA660001 /* Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC22DD33EE44FF55AA660011 /* Workspace.swift */; };
+		CC22DD33EE44FF55AA660002 /* SyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC22DD33EE44FF55AA660012 /* SyncState.swift */; };
+		CC22DD33EE44FF55AA660003 /* GoogleAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC22DD33EE44FF55AA660013 /* GoogleAuthService.swift */; };
+		CC22DD33EE44FF55AA660004 /* DriveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC22DD33EE44FF55AA660014 /* DriveService.swift */; };
+		CC22DD33EE44FF55AA660005 /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC22DD33EE44FF55AA660015 /* SyncEngine.swift */; };
+		CC22DD33EE44FF55AA660006 /* WorkspaceSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC22DD33EE44FF55AA660016 /* WorkspaceSwitcher.swift */; };
+		CC22DD33EE44FF55AA660008 /* WorkspaceSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC22DD33EE44FF55AA660018 /* WorkspaceSettingsSheet.swift */; };
+		CC22DD33EE44FF55AA660009 /* DriveFolderPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC22DD33EE44FF55AA660019 /* DriveFolderPicker.swift */; };
+		DD11EE22FF33AA44BB550001 /* BatchOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD11EE22FF33AA44BB550011 /* BatchOperations.swift */; };
+		DD11EE22FF33AA44BB550002 /* BatchEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD11EE22FF33AA44BB550012 /* BatchEditorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +83,22 @@
 		F2B1C3A5D25B8EA4299A5A39 /* ImportDropZone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportDropZone.swift; sourceTree = "<group>"; };
 		FA1FE0D21D63DDB8E786DDDF /* SeedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedData.swift; sourceTree = "<group>"; };
 		FB7ECB473A580210DC4D2672 /* Avatar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Avatar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA11BB22CC33DD44EE55FF11 /* LibraryManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryManifest.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF12 /* UTType+Avatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UTType+Avatar.swift"; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF13 /* LibraryArchiver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryArchiver.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF14 /* LibraryImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryImporter.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF15 /* LibraryExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryExportSheet.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF16 /* LibraryImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryImportSheet.swift; sourceTree = "<group>"; };
+		CC22DD33EE44FF55AA660011 /* Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workspace.swift; sourceTree = "<group>"; };
+		CC22DD33EE44FF55AA660012 /* SyncState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncState.swift; sourceTree = "<group>"; };
+		CC22DD33EE44FF55AA660013 /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
+		CC22DD33EE44FF55AA660014 /* DriveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveService.swift; sourceTree = "<group>"; };
+		CC22DD33EE44FF55AA660015 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
+		CC22DD33EE44FF55AA660016 /* WorkspaceSwitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSwitcher.swift; sourceTree = "<group>"; };
+		CC22DD33EE44FF55AA660018 /* WorkspaceSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSettingsSheet.swift; sourceTree = "<group>"; };
+		CC22DD33EE44FF55AA660019 /* DriveFolderPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveFolderPicker.swift; sourceTree = "<group>"; };
+		DD11EE22FF33AA44BB550011 /* BatchOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchOperations.swift; sourceTree = "<group>"; };
+		DD11EE22FF33AA44BB550012 /* BatchEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchEditorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +107,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				BCB144F53A50F7E154817D1C /* Sparkle in Frameworks */,
+				D1A2B3C4E5F60718293A4B5C /* ZIPFoundation in Frameworks */,
+				BB11CC22DD33EE44FF550001 /* GoogleSignIn in Frameworks */,
+				BB11CC22DD33EE44FF550002 /* GoogleSignInSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,16 +121,23 @@
 			children = (
 				5127F7FAC6DD92487E178E76 /* AppState.swift */,
 				EECE2EA74BCD5AA894A3864C /* AutoAligner.swift */,
+				DD11EE22FF33AA44BB550011 /* BatchOperations.swift */,
 				81C29944A4F31F74C9CD6F54 /* BulkAligner.swift */,
 				CBFBA66AF626E08F10F1333C /* Compositor.swift */,
+				CC22DD33EE44FF55AA660014 /* DriveService.swift */,
 				A67F34619015B892E51F8BA0 /* ExportService.swift */,
+				CC22DD33EE44FF55AA660013 /* GoogleAuthService.swift */,
 				8024D84C778A83045FEA287D /* ImageAdjustments.swift */,
 				A09E65B08B3DB5530D416B59 /* ImageProcessor.swift */,
 				B313E53EBD6AC732524D4690 /* ImportFlow.swift */,
+				AA11BB22CC33DD44EE55FF13 /* LibraryArchiver.swift */,
+				AA11BB22CC33DD44EE55FF14 /* LibraryImporter.swift */,
 				349CA2BF8E0D0316D4C6EC9F /* Localization.swift */,
+				AA11BB22CC33DD44EE55FF12 /* UTType+Avatar.swift */,
 				355D09CA2450C106801EAD77 /* ModelManager.swift */,
 				7194822E14F9864C38869D98 /* PortraitUndoManager.swift */,
 				FA1FE0D21D63DDB8E786DDDF /* SeedData.swift */,
+				CC22DD33EE44FF55AA660015 /* SyncEngine.swift */,
 				EA293E7F1CF952594B0EB25E /* UpdateManager.swift */,
 			);
 			path = Services;
@@ -140,7 +185,10 @@
 			children = (
 				BBCB0455D6E65138F7848400 /* BackgroundPreset.swift */,
 				97E1236EB27F5CE8A83B67DF /* ExportPreset.swift */,
+				AA11BB22CC33DD44EE55FF11 /* LibraryManifest.swift */,
 				A781DB69220F07CD4C7450BC /* Portrait.swift */,
+				CC22DD33EE44FF55AA660012 /* SyncState.swift */,
+				CC22DD33EE44FF55AA660011 /* Workspace.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -148,13 +196,19 @@
 		E2C4AFE19D88C3D78C93976E /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				DD11EE22FF33AA44BB550012 /* BatchEditorView.swift */,
 				7A86EE5462E82319D323AF1C /* EditorView.swift */,
 				BF5D10603D8C4CBCEBF63691 /* ExportSheet.swift */,
 				F2B1C3A5D25B8EA4299A5A39 /* ImportDropZone.swift */,
+				AA11BB22CC33DD44EE55FF15 /* LibraryExportSheet.swift */,
+				AA11BB22CC33DD44EE55FF16 /* LibraryImportSheet.swift */,
 				48EF633AE84A1D2EF9412998 /* LibraryView.swift */,
 				877D5A42F98746FCC7A61452 /* MainWindow.swift */,
 				EC7660BC4B678CC5A24BDEB7 /* SettingsView.swift */,
 				33D997F6414EDD2CF3ED01B3 /* SidebarUpdateCard.swift */,
+				CC22DD33EE44FF55AA660019 /* DriveFolderPicker.swift */,
+				CC22DD33EE44FF55AA660018 /* WorkspaceSettingsSheet.swift */,
+				CC22DD33EE44FF55AA660016 /* WorkspaceSwitcher.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -177,6 +231,9 @@
 			name = Avatar;
 			packageProductDependencies = (
 				24422B485569134EE9164799 /* Sparkle */,
+				A1B2C3D4E5F60718293A4B5D /* ZIPFoundation */,
+				BB11CC22DD33EE44FF550011 /* GoogleSignIn */,
+				BB11CC22DD33EE44FF550012 /* GoogleSignInSwift */,
 			);
 			productName = Avatar;
 			productReference = FB7ECB473A580210DC4D2672 /* Avatar.app */;
@@ -208,6 +265,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				C8563EE8B7639A0683C1B596 /* XCRemoteSwiftPackageReference "Sparkle" */,
+				E1F2A3B4C5D60718293A4B5E /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				BB11CC22DD33EE44FF550021 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7BE0948B8680DB6BA122634A /* Products */;
@@ -260,6 +319,22 @@
 				C944B1F772FD3DFE3305D6C8 /* SettingsView.swift in Sources */,
 				EDCEBBF69658512E9483D13B /* SidebarUpdateCard.swift in Sources */,
 				EAA5F4DF5638ED9457ED418F /* UpdateManager.swift in Sources */,
+				AA11BB22CC33DD44EE55FF01 /* LibraryManifest.swift in Sources */,
+				AA11BB22CC33DD44EE55FF02 /* UTType+Avatar.swift in Sources */,
+				AA11BB22CC33DD44EE55FF03 /* LibraryArchiver.swift in Sources */,
+				AA11BB22CC33DD44EE55FF04 /* LibraryImporter.swift in Sources */,
+				AA11BB22CC33DD44EE55FF05 /* LibraryExportSheet.swift in Sources */,
+				AA11BB22CC33DD44EE55FF06 /* LibraryImportSheet.swift in Sources */,
+				CC22DD33EE44FF55AA660001 /* Workspace.swift in Sources */,
+				CC22DD33EE44FF55AA660002 /* SyncState.swift in Sources */,
+				CC22DD33EE44FF55AA660003 /* GoogleAuthService.swift in Sources */,
+				CC22DD33EE44FF55AA660004 /* DriveService.swift in Sources */,
+				CC22DD33EE44FF55AA660005 /* SyncEngine.swift in Sources */,
+				CC22DD33EE44FF55AA660006 /* WorkspaceSwitcher.swift in Sources */,
+				CC22DD33EE44FF55AA660008 /* WorkspaceSettingsSheet.swift in Sources */,
+				CC22DD33EE44FF55AA660009 /* DriveFolderPicker.swift in Sources */,
+				DD11EE22FF33AA44BB550001 /* BatchOperations.swift in Sources */,
+				DD11EE22FF33AA44BB550002 /* BatchEditorView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -334,6 +409,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Avatar/Avatar.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Avatar/Info.plist;
@@ -354,6 +430,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Avatar/Avatar.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Avatar/Info.plist;
@@ -469,6 +546,22 @@
 				minimumVersion = 2.6.0;
 			};
 		};
+		E1F2A3B4C5D60718293A4B5E /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.0;
+			};
+		};
+		BB11CC22DD33EE44FF550021 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -476,6 +569,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C8563EE8B7639A0683C1B596 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		A1B2C3D4E5F60718293A4B5D /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1F2A3B4C5D60718293A4B5E /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+		BB11CC22DD33EE44FF550011 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB11CC22DD33EE44FF550021 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		BB11CC22DD33EE44FF550012 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB11CC22DD33EE44FF550021 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -9,10 +9,18 @@ struct MainWindow: View {
     var body: some View {
         @Bindable var state = appState
         NavigationSplitView {
-            LibraryView(selection: $state.selectedPortraitID)
-                .navigationSplitViewColumnWidth(min: 200, ideal: 260, max: 360)
+            VStack(spacing: 0) {
+                WorkspaceSwitcher()
+
+                Divider()
+
+                LibraryView(selection: $state.selectedPortraitIDs)
+            }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 260, max: 360)
         } detail: {
-            if let id = state.selectedPortraitID,
+            if state.isBatchSelected {
+                BatchEditorView()
+            } else if let id = state.selectedPortraitID,
                let portrait = portraits.first(where: { $0.id == id }) {
                 EditorView(portrait: portrait)
             } else {
@@ -36,11 +44,17 @@ struct MainWindow: View {
         #if os(macOS)
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
-        if panel.runModal() == .OK, let url = panel.url {
-            ImportFlow.importFile(url: url, context: context, appState: appState,
-                                         modelManager: modelManager)
+        if panel.runModal() == .OK {
+            let urls = panel.urls
+            if urls.count == 1, let url = urls.first {
+                ImportFlow.importFile(url: url, context: context, appState: appState,
+                                             modelManager: modelManager)
+            } else if urls.count > 1 {
+                ImportFlow.importFiles(urls: urls, context: context, appState: appState,
+                                              modelManager: modelManager)
+            }
         }
         #endif
     }

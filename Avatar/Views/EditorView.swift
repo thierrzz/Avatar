@@ -379,17 +379,6 @@ struct EditorView: View {
             // MARK: Edit
             Section {
                 Button {
-                    ImportFlow.reprocess(portrait: portrait, context: context, appState: appState,
-                                        modelManager: modelManager)
-                } label: {
-                    Label(Loc.reCutout, systemImage: "wand.and.stars")
-                }
-                .disabled(portrait.originalImageData == nil || appState.isProcessing)
-                .help(modelManager.isAvailable && modelManager.useAdvancedModel
-                    ? Loc.reCutoutHelpAdvanced
-                    : Loc.reCutoutHelpApple)
-
-                Button {
                     ImportFlow.upscale(portrait: portrait, context: context, appState: appState,
                                       modelManager: modelManager)
                 } label: {
@@ -404,16 +393,19 @@ struct EditorView: View {
                     if portrait.isMagicRetouched {
                         ImportFlow.undoMagicRetouch(portrait: portrait, context: context, appState: appState)
                     } else {
-                        ImportFlow.magicRetouch(portrait: portrait, context: context, appState: appState)
+                        ImportFlow.magicRetouch(portrait: portrait, context: context, appState: appState,
+                                               modelManager: modelManager)
                     }
                 } label: {
-                    Label(portrait.isMagicRetouched ? Loc.magicRetouchUndo : Loc.magicRetouch,
-                          systemImage: portrait.isMagicRetouched ? "arrow.uturn.backward" : "wand.and.sparkles")
+                    Label(Loc.magicRetouch, systemImage: "wand.and.sparkles")
+                        .foregroundStyle(portrait.isMagicRetouched ? Color.accentColor : .primary)
                 }
                 .disabled(portrait.cutoutPNG == nil || appState.isProcessing)
                 .help(portrait.isMagicRetouched
                     ? Loc.magicRetouchUndoHelp
-                    : Loc.magicRetouchHelp)
+                    : (modelManager.isAvailable && modelManager.useAdvancedModel && !portrait.isAdvancedCutout
+                        ? Loc.magicRetouchWithUpgradeHelp
+                        : Loc.magicRetouchHelp))
 
                 // Subtle hint when the advanced model is not yet downloaded.
                 if !modelManager.isAvailable && !modelManager.hintDismissed {
