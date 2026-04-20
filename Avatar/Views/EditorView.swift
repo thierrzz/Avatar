@@ -543,7 +543,7 @@ struct EditorView: View {
 
             enhanceCard(
                 title: Loc.upscale2x,
-                systemImage: "arrow.up.left.and.arrow.down.right.magnifyingglass",
+                systemImage: "arrow.up.left.and.arrow.down.right",
                 disabled: portrait.isUpscaled || portrait.originalImageData == nil || appState.isProcessing,
                 help: portrait.isUpscaled ? Loc.alreadyUpscaled : Loc.upscaleHelp
             ) {
@@ -596,10 +596,7 @@ struct EditorView: View {
                     .symbolEffect(.bounce, value: active)
                 Text(title)
                     .fontWeight(.medium)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
         }
