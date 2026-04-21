@@ -6,6 +6,7 @@ struct AvatarApp: App {
     @State private var appState = AppState()
     @State private var updater = UpdateManager()
     @State private var modelManager = ModelManager()
+    @State private var upscaleManager = UpscaleModelManager()
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -27,6 +28,7 @@ struct AvatarApp: App {
                 .environment(appState)
                 .environment(updater)
                 .environment(modelManager)
+                .environment(upscaleManager)
                 // Minimum ensures the library sidebar (~200), canvas (~280)
                 // and inspector (~320) all have enough room to display
                 // their content without truncation.
@@ -47,6 +49,7 @@ struct AvatarApp: App {
                 .environment(appState)
                 .environment(updater)
                 .environment(modelManager)
+                .environment(upscaleManager)
                 .modelContainer(sharedModelContainer)
                 .id(appState.language)
         }

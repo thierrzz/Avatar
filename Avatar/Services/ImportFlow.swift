@@ -209,13 +209,14 @@ enum ImportFlow {
 
     // MARK: - Upscale
 
-    /// Upscales the portrait's original image by 2× using Lanczos interpolation,
-    /// then re-runs the full cutout pipeline (subject lift + face detection +
-    /// body pose) from the higher-resolution source. Updates `originalImageData`
-    /// with the upscaled version and sets `isUpscaled = true`.
-    /// Preserves the user's manual offset/scale transform.
+    /// Runs an on-device Real-ESRGAN super-resolution model on the portrait's
+    /// original image (2× or 4× depending on the selected variant), then
+    /// re-runs the cutout pipeline from the higher-resolution source. Caller
+    /// is expected to guarantee `upscaleManager.isAnyInstalled` — the UI
+    /// disables the Upscale button otherwise.
     static func upscale(portrait: Portrait, context: ModelContext, appState: AppState,
-                        modelManager: ModelManager? = nil) {
+                        modelManager: ModelManager? = nil,
+                        upscaleManager: UpscaleModelManager) {
         guard !portrait.isUpscaled else {
             appState.lastError = Loc.alreadyUpscaled
             return
@@ -228,6 +229,10 @@ enum ImportFlow {
             appState.lastError = Loc.cannotDecodeOriginal
             return
         }
+        guard upscaleManager.isAnyInstalled else {
+            appState.lastError = Loc.upscaleModelNotInstalled
+            return
+        }
 
         appState.isProcessing = true
         appState.lastError = nil
@@ -236,19 +241,23 @@ enum ImportFlow {
         let useAdvanced = modelManager?.useAdvancedModel == true
         let portraitID = portrait.id
         Task.detached(priority: .userInitiated) {
-            let birefnet: MLModel? = useAdvanced ? await modelManager?.loadModelAsync() : nil
-            do {
-                // 1. Upscale the original image (2× Lanczos + sharpen + denoise)
-                guard let upscaled = ImageProcessor.upscale(image: cg) else {
-                    await MainActor.run {
-                        appState.lastError = Loc.upscaleFailed
-                        appState.isProcessing = false
-                    }
-                    return
+            guard let active = await upscaleManager.activeModelAsync() else {
+                await MainActor.run {
+                    appState.lastError = Loc.upscaleModelNotInstalled
+                    appState.isProcessing = false
                 }
-                print("[Upscale] upscaled to \(upscaled.width)×\(upscaled.height)")
+                return
+            }
+            let upscaleModel = active.model
+            let factor = active.variant.factor
+            let birefnet: MLModel? = useAdvanced ? await modelManager?.loadModelAsync() : nil
 
-                // 2. Re-encode upscaled original as PNG data for storage
+            do {
+                // 1. AI super-resolve the original image.
+                let upscaled = try ImageProcessor.upscale(image: cg, using: upscaleModel, factor: factor)
+                print("[Upscale] upscaled to \(upscaled.width)×\(upscaled.height) (×\(factor))")
+
+                // 2. Re-encode the upscaled original for persistent storage.
                 guard let upscaledData = ImageProcessor.pngData(from: upscaled) else {
                     await MainActor.run {
                         appState.lastError = Loc.cannotSaveUpscaled
@@ -257,7 +266,7 @@ enum ImportFlow {
                     return
                 }
 
-                // 3. Run the full pipeline on the upscaled image
+                // 3. Re-run the cutout pipeline from the higher-resolution source.
                 let processed = try ImageProcessor.process(image: upscaled, birefnetModel: birefnet)
                 let pngData = ImageProcessor.pngData(from: processed.cutout) ?? Data()
                 print("[Upscale] pipeline done cutout=\(processed.cutout.width)×\(processed.cutout.height) face=\(processed.faceRect ?? .zero)")
@@ -287,27 +296,27 @@ enum ImportFlow {
                     }
                     fresh.preUpscaleInterEyeDistance = fresh.interEyeDistance
                     fresh.preUpscaleBodyBottomY = fresh.bodyBottomY
+                    fresh.preUpscaleFactor = factor
 
-                    // Update original with upscaled version
                     fresh.originalImageData = upscaledData
                     fresh.cutoutPNG = pngData
                     fresh.faceRect = processed.faceRect ?? .zero
                     fresh.eyeCenter = processed.eyeCenter
                     fresh.interEyeDistance = Double(processed.interEyeDistance ?? 0)
                     fresh.bodyBottomY = Double(processed.bodyBottomY)
-                    // The cutout is now 2× larger in pixels. Halve the scale so
-                    // the portrait stays the same visual size on the canvas.
-                    // (cutoutW_new × scale_new == cutoutW_old × scale_old)
-                    fresh.scale /= 2.0
+                    // The cutout is now `factor`× larger in pixels. Divide the
+                    // canvas scale by the same factor so visual size stays
+                    // stable; exports downsample from a genuinely higher-res
+                    // cutout, which is where the win shows up.
+                    fresh.scale /= Double(factor)
                     fresh.isUpscaled = true
-                    // Reset magic retouch flag since we have a fresh cutout
                     fresh.isMagicRetouched = false
                     fresh.preRetouchPNG = nil
                     fresh.updatedAt = Date()
                     try? context.save()
                     appState.invalidateCutout(for: fresh)
                     appState.isProcessing = false
-                    print("[Upscale] DONE id=\(fresh.id)")
+                    print("[Upscale] DONE id=\(fresh.id) factor=\(factor)")
                 }
             } catch {
                 await MainActor.run {
@@ -342,8 +351,9 @@ enum ImportFlow {
         }
         portrait.interEyeDistance = portrait.preUpscaleInterEyeDistance
         portrait.bodyBottomY = portrait.preUpscaleBodyBottomY
-        // Restore the visual scale (was halved when we upscaled).
-        portrait.scale *= 2.0
+        // Restore the visual scale (was divided by the factor at upscale time).
+        let storedFactor = portrait.preUpscaleFactor > 0 ? portrait.preUpscaleFactor : 2
+        portrait.scale *= Double(storedFactor)
         portrait.isUpscaled = false
         // Magic Retouch was cleared at upscale time; pre-upscale cutout is raw.
         portrait.isMagicRetouched = false

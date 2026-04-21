@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Vercel + Supabase backend for the Avatar macOS app Pro features.",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vercel dev",
     "deploy": "vercel --prod",

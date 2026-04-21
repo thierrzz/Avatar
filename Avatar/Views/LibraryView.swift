@@ -9,6 +9,7 @@ struct LibraryView: View {
     @Query private var backgrounds: [BackgroundPreset]
     @Binding var selection: UUID?
     @State private var search = ""
+    @State private var multiSelection: Set<UUID> = []
 
     private var filtered: [Portrait] {
         guard !search.isEmpty else { return portraits }
@@ -40,32 +41,61 @@ struct LibraryView: View {
                 )
                 .frame(maxHeight: .infinity)
             } else {
-                List(selection: $selection) {
+                List(selection: $multiSelection) {
                     ForEach(filtered) { p in
                         PortraitRow(portrait: p, background: background(for: p))
                             .tag(p.id)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                             .contextMenu {
-                                Button(Loc.delete, role: .destructive) {
-                                    context.delete(p)
-                                    if selection == p.id { selection = nil }
+                                let targets = contextTargets(for: p)
+                                Button(targets.count > 1
+                                       ? "\(Loc.delete) \(targets.count) \(Loc.portraitsPlural)"
+                                       : Loc.delete,
+                                       role: .destructive) {
+                                    delete(targets)
                                 }
                             }
                     }
                 }
+                .animation(.easeOut(duration: 0.2), value: filtered.map(\.id))
                 .listStyle(.sidebar)
+                .onDeleteCommand {
+                    delete(filtered.filter { multiSelection.contains($0.id) })
+                }
             }
 
+            DebugProToggle()
             SidebarUpdateCard()
         }
-        .animation(.easeInOut(duration: 0.2), value: updater.state == .idle)
-        .overlay {
-            if appState.isProcessing {
-                ProgressView(Loc.processing)
-                    .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+        .onAppear {
+            multiSelection = selection.map { [$0] } ?? []
+        }
+        .onChange(of: multiSelection) { _, newValue in
+            let single: UUID? = newValue.count == 1 ? newValue.first : nil
+            if selection != single { selection = single }
+        }
+        .onChange(of: selection) { _, newValue in
+            let desired: Set<UUID> = newValue.map { [$0] } ?? []
+            if multiSelection.count <= 1 && multiSelection != desired {
+                multiSelection = desired
             }
         }
+        .animation(.easeOut(duration: 0.3), value: updater.state)
+    }
+
+    private func contextTargets(for portrait: Portrait) -> [Portrait] {
+        if multiSelection.contains(portrait.id) && multiSelection.count > 1 {
+            return filtered.filter { multiSelection.contains($0.id) }
+        }
+        return [portrait]
+    }
+
+    private func delete(_ portraits: [Portrait]) {
+        guard !portraits.isEmpty else { return }
+        let ids = Set(portraits.map(\.id))
+        for p in portraits { context.delete(p) }
+        multiSelection.subtract(ids)
+        if let sel = selection, ids.contains(sel) { selection = nil }
     }
 
     /// Resolves the background each portrait should be drawn against.

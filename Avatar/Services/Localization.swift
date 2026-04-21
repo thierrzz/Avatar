@@ -75,14 +75,46 @@ enum Loc {
            : "Knipt dit portret opnieuw uit met de Apple-pipeline. Positie en schaal blijven behouden."
     }
     static var upscale2x: String       { en ? "Upscale (2x)" : "Opschalen (2x)" }
+    static func upscaleNx(_ factor: Int) -> String {
+        en ? "Upscale (\(factor)×)" : "Opschalen (\(factor)×)"
+    }
     static var undoUpscale: String     { en ? "Undo Upscale" : "Opschalen ongedaan maken" }
     static var alreadyUpscaled: String {
         en ? "This portrait has already been upscaled."
            : "Dit portret is al opgeschaald."
     }
     static var upscaleHelp: String {
-        en ? "Upscales the original photo to 2× resolution and re-cuts for higher quality."
-           : "Schaalt de originele foto op naar 2× resolutie en knipt opnieuw uit voor hogere kwaliteit."
+        en ? "Uses an on-device AI model to recover detail and sharpen edges. Re-cuts the portrait from the higher-resolution result."
+           : "Gebruikt een on-device AI-model om details te herstellen en randen te verscherpen. Knipt het portret opnieuw uit vanaf het hogere-resolutiebeeld."
+    }
+    static var upscaleHelpNotInstalled: String {
+        en ? "Install the AI upscale model in Settings → AI Model to enable this."
+           : "Installeer het AI-opschaalmodel via Instellingen → AI-model om dit in te schakelen."
+    }
+    static var upscaleHelpTapToInstall: String {
+        en ? "Tap to install the AI upscale model."
+           : "Tik om het AI-opschaalmodel te installeren."
+    }
+    static var upscaleHelpDownloading: String {
+        en ? "Downloading the AI upscale model…"
+           : "AI-opschaalmodel wordt gedownload…"
+    }
+    static var upscalePopoverTitle: String {
+        en ? "AI upscale model" : "AI-opschaalmodel"
+    }
+    static var upscalePopoverBlurb: String {
+        en ? "Reconstructs detail in low-resolution photos using an on-device Real-ESRGAN model."
+           : "Herstelt details in foto's met lage resolutie met een on-device Real-ESRGAN-model."
+    }
+    static var upscaleApproxSize: String {
+        en ? "~50–100 MB download, installed once."
+           : "~50–100 MB download, eenmalig installeren."
+    }
+    static var installAndUpscale: String {
+        en ? "Install & upscale" : "Installeer & opschalen"
+    }
+    static var upscaleNow: String {
+        en ? "Upscale now" : "Opschalen"
     }
     static var undoUpscaleHelp: String {
         en ? "Revert to the original (non-upscaled) photo."
@@ -458,6 +490,32 @@ enum Loc {
     // MARK: Model manager errors
     static func modelLoadFailed(_ err: String) -> String {
         en ? "Failed to load model: \(err)" : "Model laden mislukt: \(err)"
+    }
+    static func upscaleModelLoadFailed(_ err: String) -> String {
+        en ? "Failed to load upscale model: \(err)" : "Opschaalmodel laden mislukt: \(err)"
+    }
+    static var upscaleModelNotInstalled: String {
+        en ? "No AI upscale model installed. Open Settings → AI Model to install one."
+           : "Geen AI-opschaalmodel geïnstalleerd. Open Instellingen → AI-model om er één te installeren."
+    }
+
+    // MARK: Upscale Settings UI
+    static var upscaleSectionTitle: String {
+        en ? "AI Upscale" : "AI-opschalen"
+    }
+    static var upscaleSectionDesc: String {
+        en ? "Reconstructs detail in low-resolution photos using an on-device Real-ESRGAN model. Choose a scale factor below."
+           : "Herstelt details in foto's met lage resolutie met behulp van een on-device Real-ESRGAN-model. Kies hieronder een schaalfactor."
+    }
+    static var upscaleVariant2x: String { en ? "2× (faster, lighter)" : "2× (sneller, lichter)" }
+    static var upscaleVariant4x: String { en ? "4× (stronger quality)" : "4× (sterkere kwaliteit)" }
+    static var upscaleActiveVariantLabel: String {
+        en ? "Active variant" : "Actieve variant"
+    }
+
+    // MARK: Editor dimensions caption
+    static func dimensionsLabel(_ w: Int, _ h: Int) -> String {
+        en ? "\(w) × \(h) px" : "\(w) × \(h) px"
     }
     static func downloadFailed(_ err: String) -> String {
         en ? "Download failed: \(err)" : "Download mislukt: \(err)"

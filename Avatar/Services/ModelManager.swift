@@ -89,8 +89,17 @@ final class ModelManager {
     nonisolated private static func loadCompiled(at url: URL) async throws -> MLModel {
         try await Task.detached(priority: .userInitiated) {
             let config = MLModelConfiguration()
-            config.computeUnits = .all
-            return try MLModel(contentsOf: url, configuration: config)
+            // BiRefNet v4 fails to build a plan on both ANE and GPU on current
+            // Apple Silicon: ANECCompile rejects an oversized conv tile
+            // (Given:103680 > Max:65536 KMEM) and MPS_BUFFERS_ENGINE rejects
+            // a dtype in the graph. `.cpuAndGPU` tried to dodge ANE but
+            // CoreML still compiles plans for all available units at load,
+            // so the GPU failure took the whole load down. Pin to CPU-only
+            // until the ANE-friendly RVM v5 replacement ships.
+            config.computeUnits = .cpuOnly
+            let model = try MLModel(contentsOf: url, configuration: config)
+            print("[ModelManager] Advanced matte model loaded on computeUnits=\(config.computeUnits.rawValue) (0=cpuOnly, 1=cpuAndGPU, 2=all, 3=cpuAndNE)")
+            return model
         }.value
     }
 
@@ -277,7 +286,17 @@ final class ModelManager {
     ///   became translucent subject over coloured backgrounds. Hair
     ///   softness is now synthesised in Swift via a fringe-band feather
     ///   so we keep the bimodal body mask and still get soft edges.
-    static let currentModelVersion = "v4"
+    /// - v5: replaced BiRefNet with RobustVideoMatting (RVM, MobileNetV3
+    ///   backbone). v4 BiRefNet failed to compile on ANE (KMEM tile too
+    ///   large) and GPU (MPS dtype mismatch), so every install was
+    ///   silently falling back to Vision. RVM is ~15 MB (vs ~500 MB),
+    ///   designed specifically for portrait hair strands, and predicts
+    ///   both alpha and unmixed foreground — the `pha` output feeds the
+    ///   existing Swift fringe-feather + blur-fusion pipeline unchanged.
+    ///   The compiled directory name `BiRefNet.mlmodelc` is kept to avoid
+    ///   rippling a rename through every call site; see follow-up work to
+    ///   rename to `AdvancedMatte.mlmodelc`.
+    static let currentModelVersion = "v5"
 
     /// Filename of the version sidecar written next to the .mlmodelc on install.
     private static let versionSidecarName = ".model_version"
@@ -287,9 +306,11 @@ final class ModelManager {
     }
 
     /// URL of the pre-compiled model archive. Bumping the path component
-    /// (e.g. `birefnet-v2`) isolates each release so existing v1 users who
-    /// migrate don't hit cached CDN copies of the old build.
-    static let modelDownloadURL = URL(string: "https://github.com/thierrzz/Avatar/releases/download/birefnet-\(currentModelVersion)/BiRefNet.mlmodelc.zip")!
+    /// (e.g. `rvm-v5`) isolates each release so existing users who migrate
+    /// don't hit cached CDN copies of the old build. The archive filename
+    /// stays `BiRefNet.mlmodelc.zip` for now — the compiled dir name is
+    /// referenced in several places and a rename is tracked as a follow-up.
+    static let modelDownloadURL = URL(string: "https://github.com/thierrzz/Avatar/releases/download/rvm-\(currentModelVersion)/BiRefNet.mlmodelc.zip")!
 
     /// Reads the version string written into the models directory at install
     /// time. Returns nil when no sidecar is present (e.g. v1 installs, which

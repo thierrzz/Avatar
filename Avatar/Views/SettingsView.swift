@@ -215,6 +215,7 @@ struct ExportPresetsSettings: View {
 
 struct AIModelSettings: View {
     @Environment(ModelManager.self) private var modelManager
+    @Environment(UpscaleModelManager.self) private var upscaleManager
     @Environment(AppState.self) private var appState
 
     var body: some View {
@@ -222,10 +223,49 @@ struct AIModelSettings: View {
             VStack(alignment: .leading, spacing: 20) {
                 birefnetSection
                 Divider()
+                upscaleSection
+                Divider()
                 proSection
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Upscale section
+
+    @ViewBuilder
+    private var upscaleSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(Loc.upscaleSectionTitle).font(.headline)
+            Text(Loc.upscaleSectionDesc)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            UpscaleVariantCard(variant: .x2)
+            UpscaleVariantCard(variant: .x4)
+
+            if upscaleManager.isAnyInstalled {
+                GroupBox {
+                    HStack {
+                        Text(Loc.upscaleActiveVariantLabel)
+                            .font(.body.weight(.medium))
+                        Spacer()
+                        Picker("", selection: Binding(
+                            get: { upscaleManager.selectedVariant },
+                            set: { upscaleManager.selectedVariant = $0 }
+                        )) {
+                            Text(Loc.upscaleVariant2x).tag(UpscaleModelManager.Variant.x2)
+                            Text(Loc.upscaleVariant4x).tag(UpscaleModelManager.Variant.x4)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .fixedSize()
+                    }
+                    .padding(4)
+                }
+            }
         }
     }
 
@@ -448,6 +488,113 @@ struct AIModelSettings: View {
             }
 
             Spacer()
+        }
+    }
+}
+
+// MARK: - Upscale variant card
+
+/// Install / progress / ready / error card for a single Real-ESRGAN variant.
+/// Shape mirrors the BiRefNet card but without the "use model" toggle —
+/// the active variant is chosen globally via the segmented picker above.
+private struct UpscaleVariantCard: View {
+    let variant: UpscaleModelManager.Variant
+    @Environment(UpscaleModelManager.self) private var manager
+
+    private var title: String {
+        variant == .x2 ? Loc.upscaleVariant2x : Loc.upscaleVariant4x
+    }
+
+    var body: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.title3)
+                        .foregroundStyle(.tint)
+                        .frame(width: 28)
+                    Text(title).font(.body.weight(.medium))
+                    Spacer()
+                }
+                Divider()
+
+                switch manager.status(for: variant) {
+                case .notInstalled:
+                    HStack {
+                        HStack(spacing: 4) {
+                            Image(systemName: "circle.dashed")
+                                .foregroundStyle(.secondary)
+                            Text(Loc.modelNotInstalled)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(Loc.installModel) {
+                            manager.downloadAndInstall(variant)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+
+                case .downloading(let progress):
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text(Loc.downloading)
+                                .foregroundStyle(.secondary)
+                        }
+                        ProgressView(value: progress)
+                        HStack {
+                            Text("\(Int(progress * 100))%")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                            Spacer()
+                            Button(Loc.cancel) {
+                                manager.cancelDownload(variant)
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+
+                case .ready:
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text(Loc.modelAvailable)
+                            }
+                            if let size = manager.installedSize(for: variant) {
+                                Text(Loc.sizeOnDisk(size))
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        Spacer()
+                        Button(Loc.delete, role: .destructive) {
+                            manager.deleteModel(variant)
+                        }
+                        .controlSize(.small)
+                    }
+
+                case .error(let message):
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label(Loc.error, systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                            Text(message)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(Loc.retry) {
+                            manager.downloadAndInstall(variant)
+                        }
+                        .controlSize(.small)
+                    }
+                }
+            }
+            .padding(4)
         }
     }
 }

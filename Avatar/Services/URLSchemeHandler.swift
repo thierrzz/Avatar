@@ -5,7 +5,8 @@ import AppKit
 /// Checkout return or Supabase OAuth return in the default browser).
 ///
 /// Expected URL shapes:
-///   `aaavatar://auth-callback?access_token=...&email=...`
+///   `aaavatar://auth-callback#access_token=...&refresh_token=...`  (implicit)
+///   `aaavatar://auth-callback?code=...`                             (PKCE)
 ///   `aaavatar://stripe-return?session_id=...`
 ///   `aaavatar://stripe-cancel`
 @MainActor
@@ -14,16 +15,10 @@ enum URLSchemeHandler {
         guard url.scheme == "aaavatar" else { return }
         guard let host = url.host else { return }
 
-        let params = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-            .queryItems?
-            .reduce(into: [String: String]()) { dict, item in
-                dict[item.name] = item.value
-            } ?? [:]
-
         switch host {
         case "auth-callback":
-            if let token = params["access_token"] {
-                appState.auth.completeSignIn(accessToken: token, email: params["email"])
+            Task {
+                await appState.auth.completeSignIn(from: url)
                 appState.refreshEntitlement()
                 NSApp.activate(ignoringOtherApps: true)
             }

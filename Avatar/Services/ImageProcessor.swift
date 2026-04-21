@@ -355,13 +355,18 @@ enum ImageProcessor {
         let originalCI = CIImage(cgImage: image)
         let extent = originalCI.extent
 
-        // BiRefNet expects 1024×1024 input — resize, run inference, scale back.
-        let modelSize = 1024
-        let inputSize = CGSize(width: modelSize, height: modelSize)
+        // v5 (RVM) expects 1024×576 input (keeps the 16:9 aspect RVM was
+        // trained against and fits ANE tile limits). v4 (BiRefNet) was
+        // 1024×1024 square. We distort to fit — the mask is scaled back to
+        // the source extent in scaleMaskToExtent() and the aspect artefact
+        // on the resized internal tensor does not propagate to the output.
+        let inputWidth = 1024
+        let inputHeight = 576
+        let inputSize = CGSize(width: inputWidth, height: inputHeight)
 
         // Resize to model input using CIImage (GPU-accelerated).
-        let scaleX = CGFloat(modelSize) / extent.width
-        let scaleY = CGFloat(modelSize) / extent.height
+        let scaleX = CGFloat(inputWidth) / extent.width
+        let scaleY = CGFloat(inputHeight) / extent.height
         let resized = originalCI
             .transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
             .cropped(to: CGRect(origin: .zero, size: inputSize))
@@ -385,10 +390,13 @@ enum ImageProcessor {
             return try subjectLift(image: image)
         }
 
-        // Extract the output mask. BiRefNet outputs a single-channel alpha matte.
-        // The CoreML model may return an image (CVPixelBuffer) or a tensor
-        // (MLMultiArray) depending on how it was converted. We handle both.
-        let outputNames = ["output", "sigmoid_output", "out"]
+        // Extract the output mask. Both BiRefNet (v4) and RVM (v5) output a
+        // single-channel alpha matte, under different feature names:
+        //   - BiRefNet: "output" / "sigmoid_output" / "out"
+        //   - RVM:      "pha" (alpha) — "fgr" is foreground RGB, ignored here
+        //     (see follow-up to wire it in and skip blur-fusion).
+        // We try the known names first, then fall through to a scan.
+        let outputNames = ["pha", "output", "sigmoid_output", "out"]
         var maskCI: CIImage?
 
         // Strategy 1: Try CVPixelBuffer output (ImageType in CoreML spec).
@@ -468,11 +476,19 @@ enum ImageProcessor {
             "inputMaskImage": ring
         ]).cropped(to: extent)
 
-        // Composite: original RGB + BiRefNet alpha matte.
+        // Recover unmixed foreground RGB before compositing. Without this,
+        // hair strands still carry `α·F + (1−α)·B_old` — the original
+        // background bleeds through against any new backdrop. Blur-fusion
+        // (Forte & Pitié, ICIP 2021; Photoroom's refine_foreground) solves
+        // for F using a wide-then-narrow two-pass weighted average. Driven
+        // by the pre-feather guided α so strand transitions stay soft.
+        let refinedFG = refineForeground(source: originalCI, alpha: guided, extent: extent)
+
+        // Composite: refined foreground RGB + feathered alpha matte.
         let clearBG = CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 0))
             .cropped(to: extent)
         let alphaMatte = softened.applyingFilter("CIMaskToAlpha")
-        let composed = originalCI.applyingFilter("CIBlendWithMask", parameters: [
+        let composed = refinedFG.applyingFilter("CIBlendWithMask", parameters: [
             "inputBackgroundImage": clearBG,
             "inputMaskImage": alphaMatte
         ]).cropped(to: extent)
@@ -484,6 +500,105 @@ enum ImageProcessor {
         }
         return cg
     }
+
+    // MARK: - Foreground refinement (blur-fusion)
+
+    /// Two-pass blur-fusion foreground estimator (Forte & Pitié, ICIP 2021).
+    /// Given the observed image `I = α·F + (1−α)·B` and a soft α matte,
+    /// recovers an estimate of the unmixed `F` so the new composite doesn't
+    /// carry the old background's colour through semi-transparent strands.
+    /// First pass uses a wide kernel to gather long-range colour, the second
+    /// a narrow one to recover local detail — same cadence as Photoroom's
+    /// `FB_blur_fusion_foreground_estimator_2` and BiRefNet's built-in
+    /// `refine_foreground` flag.
+    private static func refineForeground(
+        source: CIImage, alpha: CIImage, extent: CGRect
+    ) -> CIImage {
+        let pass1 = blurFusionPass(I: source, F: source, B: source,
+                                   alpha: alpha, radius: 90, extent: extent)
+        let pass2 = blurFusionPass(I: source, F: pass1.F, B: pass1.B,
+                                   alpha: alpha, radius: 6, extent: extent)
+        return pass2.F
+    }
+
+    /// Single blur-fusion pass. Produces a refined foreground `F` and the
+    /// blurred background estimate used as the prior for the next pass.
+    private static func blurFusionPass(
+        I: CIImage, F: CIImage, B: CIImage, alpha: CIImage,
+        radius: Double, extent: CGRect
+    ) -> (F: CIImage, B: CIImage) {
+        // F·α and B·(1−α) weighted images. Alpha is a grayscale mask so
+        // `CIMultiplyCompositing` broadcasts it across the RGB channels.
+        let fa = F.applyingFilter("CIMultiplyCompositing", parameters: [
+            kCIInputBackgroundImageKey: alpha
+        ]).cropped(to: extent)
+        let invAlpha = alpha.applyingFilter("CIColorInvert").cropped(to: extent)
+        let bInv = B.applyingFilter("CIMultiplyCompositing", parameters: [
+            kCIInputBackgroundImageKey: invAlpha
+        ]).cropped(to: extent)
+
+        let blur: (CIImage) -> CIImage = { input in
+            input.applyingFilter("CIGaussianBlur",
+                                 parameters: [kCIInputRadiusKey: radius])
+                 .cropped(to: extent)
+        }
+        let blurredAlpha = blur(alpha)
+        let blurredFA    = blur(fa)
+        let blurredBInv  = blur(bInv)
+
+        let newF = blurFusionKernel.apply(
+            extent: extent,
+            arguments: [I, alpha, blurredAlpha, blurredFA, blurredBInv]
+        ) ?? F
+        let newB = computeBlurredBKernel.apply(
+            extent: extent,
+            arguments: [blurredAlpha, blurredBInv]
+        ) ?? B
+
+        return (newF.cropped(to: extent), newB.cropped(to: extent))
+    }
+
+    /// Core of the blur-fusion step: divide the blurred weighted images
+    /// back out to get `F_hat`, `B_hat`, then add a correction term so the
+    /// result reconstructs the observed `I` at the current α.
+    private static let blurFusionKernel: CIColorKernel = {
+        let src = """
+        kernel vec4 blurFusion(__sample I, __sample alpha,
+                               __sample blurredAlpha,
+                               __sample blurredFA,
+                               __sample blurredBInv) {
+            float a   = alpha.r;
+            float bA  = blurredAlpha.r;
+            float eps = 1e-5;
+            vec3 F_hat = blurredFA.rgb   / (bA + eps);
+            vec3 B_hat = blurredBInv.rgb / ((1.0 - bA) + eps);
+            vec3 F = clamp(F_hat + a * (I.rgb - a * F_hat - (1.0 - a) * B_hat),
+                           0.0, 1.0);
+            return vec4(F, 1.0);
+        }
+        """
+        guard let kernel = CIColorKernel(source: src) else {
+            fatalError("[ImageProcessor] blurFusion kernel failed to compile")
+        }
+        return kernel
+    }()
+
+    /// Computes the blurred background estimate used as the prior for the
+    /// next blur-fusion pass.
+    private static let computeBlurredBKernel: CIColorKernel = {
+        let src = """
+        kernel vec4 computeBlurredB(__sample blurredAlpha,
+                                    __sample blurredBInv) {
+            float eps = 1e-5;
+            vec3 B = blurredBInv.rgb / ((1.0 - blurredAlpha.r) + eps);
+            return vec4(clamp(B, 0.0, 1.0), 1.0);
+        }
+        """
+        guard let kernel = CIColorKernel(source: src) else {
+            fatalError("[ImageProcessor] computeBlurredB kernel failed to compile")
+        }
+        return kernel
+    }()
 
     /// Extracts a grayscale mask CIImage from the first MLMultiArray output
     /// found in the prediction. Handles shapes like (1,1,H,W), (1,H,W), or (H,W)
@@ -626,40 +741,266 @@ enum ImageProcessor {
         return rep.representation(using: .png, properties: [:])
     }
 
-    // MARK: - Upscale
+    // MARK: - Upscale (AI super-resolution)
 
-    /// Upscales a CGImage by the given factor using high-quality Lanczos
-    /// interpolation, followed by luminance sharpening to recover detail
-    /// and light noise reduction to suppress interpolation artefacts.
-    /// Returns nil only when the Core Image filter chain fails.
-    static func upscale(image: CGImage, factor: CGFloat = 2.0) -> CGImage? {
+    enum UpscaleError: Error {
+        case pixelBufferCreationFailed
+        case modelInputMissing
+        case modelOutputMissing
+        case outputPixelBufferInvalid
+        case sourceTooLarge
+    }
+
+    /// The converted Real-ESRGAN models accept a single fixed 512×512 input
+    /// (RRDBNet's pixel-unshuffle forces this — dynamic shapes generate a
+    /// rank-6 reshape that Core ML rejects). We fit the source into this
+    /// square with aspect-preserving padding, run the model, then crop the
+    /// padded region back out of the N× output. Tiling is a follow-up.
+    private static let fixedUpscaleInputSize: Int = 512
+
+    /// Runs a Real-ESRGAN super-resolution model on the input image and returns
+    /// a CGImage at `factor`× resolution. Throws `UpscaleError` when the model's
+    /// I/O doesn't match expectations (logged); the caller surfaces it to the UI.
+    ///
+    /// Input/output contract (fixed by the `coremltools` conversion):
+    /// - Input: single image feature named `input` accepting BGRA8 CVPixelBuffer.
+    /// - Output: single image feature named `output` returning BGRA8 CVPixelBuffer
+    ///   at `factor`× the input dimensions.
+    /// If the converted model uses different feature names we fall back to
+    /// whatever the model's description declares, so the code doesn't break
+    /// the first time we swap in a differently-named checkpoint.
+    static func upscale(image: CGImage, using model: MLModel, factor: Int) throws -> CGImage {
+        // 1. Fit source into a fixed SxS square with aspect-preserving padding.
+        //    The model only accepts S×S; we crop padding back out of the output.
+        let S = fixedUpscaleInputSize
+        let srcW = CGFloat(image.width)
+        let srcH = CGFloat(image.height)
+        let longEdge = max(srcW, srcH)
+        let fit = CGFloat(S) / longEdge
+        let contentW = Int((srcW * fit).rounded())
+        let contentH = Int((srcH * fit).rounded())
+
+        guard let padded = paddedSquare(image: image, contentSize: CGSize(width: contentW, height: contentH), side: S) else {
+            throw UpscaleError.sourceTooLarge
+        }
+        print("[Upscale] source \(image.width)×\(image.height) → \(contentW)×\(contentH) in \(S)² before ML")
+
+        // 2. CGImage → CVPixelBuffer (BGRA8) at the model's expected spec.
+        guard let pixelBuffer = makePixelBuffer(from: padded) else {
+            throw UpscaleError.pixelBufferCreationFailed
+        }
+
+        // 3. Run the model. Discover feature names dynamically so we're robust
+        //    to naming differences between the 2× and 4× checkpoints.
+        let inputName = model.modelDescription.inputDescriptionsByName.keys.first ?? "input"
+        let provider = try MLDictionaryFeatureProvider(dictionary: [
+            inputName: MLFeatureValue(pixelBuffer: pixelBuffer)
+        ])
+
+        let output = try model.prediction(from: provider)
+
+        // 4. Extract the first image-typed output (PixelBuffer or MLMultiArray).
+        let outputName = model.modelDescription.outputDescriptionsByName.keys.first ?? "output"
+        guard let feature = output.featureValue(for: outputName) else {
+            throw UpscaleError.modelOutputMissing
+        }
+
+        let fullOutput: CGImage
+        if let buf = feature.imageBufferValue, let cg = cgImage(fromPixelBuffer: buf) {
+            fullOutput = cg
+        } else if let array = feature.multiArrayValue, let cg = cgImage(fromMultiArray: array) {
+            fullOutput = cg
+        } else {
+            throw UpscaleError.modelOutputMissing
+        }
+
+        // 5. Crop out the padded margin so the result matches the source AR at
+        //    factor× resolution.
+        let cropW = contentW * factor
+        let cropH = contentH * factor
+        let cropRect = CGRect(x: 0, y: 0, width: cropW, height: cropH)
+        guard let cropped = fullOutput.cropping(to: cropRect) else { return fullOutput }
+        return cropped
+    }
+
+    // MARK: - Pad-to-square helper (for fixed-shape ML input)
+
+    /// Resizes `image` to `contentSize` (Lanczos) and composites it at the
+    /// top-left of an `side`×`side` black square. Top-left origin matters:
+    /// the caller crops the output with CGRect(0, 0, contentW*factor,
+    /// contentH*factor) regardless of aspect ratio, so padding on the right
+    /// and bottom keeps that crop correct.
+    private static func paddedSquare(image: CGImage, contentSize: CGSize, side: Int) -> CGImage? {
+        guard let resized = lanczosResize(image: image, to: contentSize) else { return nil }
+        let cs = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        let ctx = CGContext(
+            data: nil,
+            width: side,
+            height: side,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: cs,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+        guard let ctx else { return nil }
+        ctx.setFillColor(CGColor(gray: 0, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: side, height: side))
+        // CGContext origin is bottom-left — draw so the content sits at the top-left.
+        let drawY = side - Int(contentSize.height.rounded())
+        ctx.draw(resized, in: CGRect(x: 0, y: drawY, width: Int(contentSize.width.rounded()), height: Int(contentSize.height.rounded())))
+        return ctx.makeImage()
+    }
+
+    // MARK: - Lanczos helper (kept only for pre-ML resize)
+
+    /// Resizes a CGImage to an exact target size using Lanczos interpolation.
+    /// Used to fit oversized inputs before running the super-resolution model.
+    private static func lanczosResize(image: CGImage, to size: CGSize) -> CGImage? {
         let source = CIImage(cgImage: image)
+        let sx = size.width / CGFloat(image.width)
+        let sy = size.height / CGFloat(image.height)
+        let scale = min(sx, sy)
+        let aspect = sx / sy
 
-        // 1. CILanczosScaleTransform — best-quality resampling in Core Image.
-        let lanczos = CIFilter.lanczosScaleTransform()
-        lanczos.inputImage = source
-        lanczos.scale = Float(factor)
-        lanczos.aspectRatio = 1.0
-        guard let scaled = lanczos.outputImage else { return nil }
+        let filter = CIFilter.lanczosScaleTransform()
+        filter.inputImage = source
+        filter.scale = Float(scale)
+        filter.aspectRatio = Float(aspect)
+        guard let out = filter.outputImage else { return nil }
+        let cs = image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        return ciContext.createCGImage(out, from: out.extent, format: .RGBA8, colorSpace: cs)
+    }
 
-        // 2. CISharpenLuminance — counteract the slight softening that
-        //    interpolation introduces without amplifying colour noise.
-        let sharpen = CIFilter.sharpenLuminance()
-        sharpen.inputImage = scaled
-        sharpen.sharpness = 0.4
-        sharpen.radius = 1.5
-        guard let sharpened = sharpen.outputImage else { return nil }
+    // MARK: - CVPixelBuffer conversion
 
-        // 3. CINoiseReduction — clean up faint ringing artefacts that Lanczos
-        //    can produce in smooth gradients (skin, out-of-focus areas).
-        let denoise = CIFilter.noiseReduction()
-        denoise.inputImage = sharpened
-        denoise.noiseLevel = 0.01
-        denoise.sharpness = 0.3
-        guard let denoised = denoise.outputImage else { return nil }
+    /// Creates a BGRA8 CVPixelBuffer from a CGImage. BGRA8 is the format most
+    /// `coremltools`-converted image inputs expect, and it's what `CIContext.render`
+    /// writes natively without an extra colour conversion step.
+    private static func makePixelBuffer(from image: CGImage) -> CVPixelBuffer? {
+        let width = image.width
+        let height = image.height
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true,
+            kCVPixelBufferIOSurfacePropertiesKey: [:]
+        ]
+        var buffer: CVPixelBuffer?
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width, height,
+            kCVPixelFormatType_32BGRA,
+            attrs as CFDictionary,
+            &buffer
+        )
+        guard status == kCVReturnSuccess, let pixelBuffer = buffer else { return nil }
 
-        let outputCS = image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
-        return ciContext.createCGImage(denoised, from: denoised.extent, format: .RGBA8, colorSpace: outputCS)
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+
+        guard let base = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
+        let cs = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGBitmapInfo.byteOrder32Little.rawValue
+            | CGImageAlphaInfo.premultipliedFirst.rawValue
+        guard let ctx = CGContext(
+            data: base,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+            space: cs,
+            bitmapInfo: bitmapInfo
+        ) else { return nil }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return pixelBuffer
+    }
+
+    /// Converts a BGRA CVPixelBuffer returned by a Core ML image output to a CGImage.
+    private static func cgImage(fromPixelBuffer pb: CVPixelBuffer) -> CGImage? {
+        let ciImage = CIImage(cvPixelBuffer: pb)
+        let cs = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        return ciContext.createCGImage(ciImage, from: ciImage.extent, format: .RGBA8, colorSpace: cs)
+    }
+
+    /// Fallback path for converted models that emit a float MLMultiArray in
+    /// shape [C=3, H, W] with values in [0,1]. Real-ESRGAN outputs this shape
+    /// when the CoreML conversion treats output as a tensor rather than an
+    /// image feature. Writes RGB bytes into an RGBA8 buffer with alpha=255.
+    private static func cgImage(fromMultiArray array: MLMultiArray) -> CGImage? {
+        let shape = array.shape.map { $0.intValue }
+        // Expect [C, H, W] or [1, C, H, W]. Find the last three dims.
+        guard shape.count >= 3 else { return nil }
+        let last3 = shape.suffix(3)
+        let channels = last3[last3.startIndex]
+        let height = last3[last3.startIndex + 1]
+        let width = last3[last3.startIndex + 2]
+        guard channels == 3, width > 0, height > 0 else { return nil }
+
+        // Strides per element (in logical units of dataType).
+        let strides = array.strides.map { $0.intValue }
+        let last3Strides = strides.suffix(3)
+        let cStride = last3Strides[last3Strides.startIndex]
+        let hStride = last3Strides[last3Strides.startIndex + 1]
+        let wStride = last3Strides[last3Strides.startIndex + 2]
+
+        let pixelCount = width * height
+        var bytes = [UInt8](repeating: 0, count: pixelCount * 4)
+
+        let pointer = array.dataPointer
+
+        @inline(__always) func byte(_ v: Float) -> UInt8 {
+            let clamped = max(0, min(1, v))
+            return UInt8(clamped * 255)
+        }
+
+        switch array.dataType {
+        case .float32:
+            let base = pointer.bindMemory(to: Float.self, capacity: array.count)
+            for y in 0..<height {
+                for x in 0..<width {
+                    let r = base[0 * cStride + y * hStride + x * wStride]
+                    let g = base[1 * cStride + y * hStride + x * wStride]
+                    let b = base[2 * cStride + y * hStride + x * wStride]
+                    let idx = (y * width + x) * 4
+                    bytes[idx + 0] = byte(r)
+                    bytes[idx + 1] = byte(g)
+                    bytes[idx + 2] = byte(b)
+                    bytes[idx + 3] = 255
+                }
+            }
+        case .float16:
+            // Float16 arrived in Swift 5.3; read as UInt16 bit-patterns and widen.
+            let base = pointer.bindMemory(to: UInt16.self, capacity: array.count)
+            for y in 0..<height {
+                for x in 0..<width {
+                    let r = Float(Float16(bitPattern: base[0 * cStride + y * hStride + x * wStride]))
+                    let g = Float(Float16(bitPattern: base[1 * cStride + y * hStride + x * wStride]))
+                    let b = Float(Float16(bitPattern: base[2 * cStride + y * hStride + x * wStride]))
+                    let idx = (y * width + x) * 4
+                    bytes[idx + 0] = byte(r)
+                    bytes[idx + 1] = byte(g)
+                    bytes[idx + 2] = byte(b)
+                    bytes[idx + 3] = 255
+                }
+            }
+        default:
+            return nil
+        }
+
+        guard let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+        let cs = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        return CGImage(
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            bytesPerRow: width * 4,
+            space: cs,
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: false,
+            intent: .defaultIntent
+        )
     }
 
     // MARK: - Magic Retouch

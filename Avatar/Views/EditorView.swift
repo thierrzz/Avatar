@@ -9,6 +9,7 @@ struct EditorView: View {
     @Environment(\.undoManager) private var undoManager
     @Environment(AppState.self) private var appState
     @Environment(ModelManager.self) private var modelManager
+    @Environment(UpscaleModelManager.self) private var upscaleManager
     @Query(sort: \BackgroundPreset.createdAt) private var backgrounds: [BackgroundPreset]
     @Query private var allPortraits: [Portrait]
 
@@ -22,6 +23,8 @@ struct EditorView: View {
     @State private var showBulkAlignConfirm = false
     @State private var bulkSkippedCount: Int? = nil
     @State private var showDeleteConfirm = false
+    @State private var showUpscalePopover = false
+    @State private var pendingUpscaleAfterInstall = false
 
     /// Which pane the right-hand inspector is showing. Persisted across launches.
     @AppStorage("editorTab") private var editorTab: EditorTab = .portrait
@@ -224,6 +227,25 @@ struct EditorView: View {
             .contentShape(Rectangle())
             .gesture(magnifyGesture)
             .onExitCommand { imageSelected = false }
+            .overlay(alignment: .bottomTrailing) {
+                dimensionsCaption
+                    .padding(10)
+            }
+        }
+    }
+
+    /// Live "W × H px" readout showing the current cutout pixel size.
+    /// Doubles/quadruples after an AI upscale so the user can see the effect.
+    @ViewBuilder
+    private var dimensionsCaption: some View {
+        let size = cutoutSize
+        if size.width > 0, size.height > 0 {
+            Text(Loc.dimensionsLabel(Int(size.width), Int(size.height)))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.ultraThinMaterial, in: Capsule())
         }
     }
 
@@ -541,21 +563,7 @@ struct EditorView: View {
                                      modelManager: modelManager)
             }
 
-            enhanceCard(
-                title: portrait.isUpscaled ? Loc.undoUpscale : Loc.upscale2x,
-                systemImage: portrait.isUpscaled ? "arrow.uturn.backward" : "arrow.up.left.and.arrow.down.right",
-                disabled: portrait.originalImageData == nil || appState.isProcessing
-                    || (portrait.isUpscaled && portrait.preUpscaleOriginalData == nil),
-                help: portrait.isUpscaled ? Loc.undoUpscaleHelp : Loc.upscaleHelp,
-                active: portrait.isUpscaled
-            ) {
-                if portrait.isUpscaled {
-                    ImportFlow.undoUpscale(portrait: portrait, context: context, appState: appState)
-                } else {
-                    ImportFlow.upscale(portrait: portrait, context: context, appState: appState,
-                                       modelManager: modelManager)
-                }
-            }
+            upscaleEnhanceCard()
 
             enhanceCard(
                 title: portrait.isMagicRetouched ? Loc.magicRetouchUndo : Loc.magicRetouch,
@@ -604,15 +612,12 @@ struct EditorView: View {
                             .fill(active ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.12))
                     )
                     .symbolEffect(.bounce, value: active)
-                    .overlay(alignment: .topTrailing) {
-                        if showProBadge {
-                            ProBadge()
-                                .offset(x: 8, y: -6)
-                        }
-                    }
                 Text(title)
                     .fontWeight(.medium)
                 Spacer(minLength: 0)
+                if showProBadge {
+                    ProBadge()
+                }
             }
             .contentShape(Rectangle())
         }
@@ -620,6 +625,98 @@ struct EditorView: View {
         .disabled(disabled)
         .opacity(disabled ? 0.45 : 1)
         .help(help)
+    }
+
+    @ViewBuilder
+    private func upscaleEnhanceCard() -> some View {
+        let modelReady = upscaleManager.isAnyInstalled
+        let isDownloading = upscaleManager.isDownloading
+        let hardDisabled = portrait.originalImageData == nil
+            || appState.isProcessing
+            || (portrait.isUpscaled && portrait.preUpscaleOriginalData == nil)
+        let title: String = portrait.isUpscaled
+            ? Loc.undoUpscale
+            : Loc.upscaleNx(upscaleManager.selectedVariant.factor)
+        let help: String = {
+            if portrait.isUpscaled { return Loc.undoUpscaleHelp }
+            if isDownloading { return Loc.upscaleHelpDownloading }
+            if !modelReady { return Loc.upscaleHelpTapToInstall }
+            return Loc.upscaleHelp
+        }()
+        let icon = portrait.isUpscaled
+            ? "arrow.uturn.backward"
+            : "arrow.up.left.and.arrow.down.right"
+
+        Button {
+            if portrait.isUpscaled {
+                ImportFlow.undoUpscale(portrait: portrait, context: context, appState: appState)
+            } else if modelReady {
+                ImportFlow.upscale(portrait: portrait, context: context, appState: appState,
+                                   modelManager: modelManager, upscaleManager: upscaleManager)
+            } else {
+                showUpscalePopover = true
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .regular))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(portrait.isUpscaled ? Color.accentColor : Color.primary)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(portrait.isUpscaled
+                                  ? Color.accentColor.opacity(0.15)
+                                  : Color.secondary.opacity(0.12))
+                    )
+                    .symbolEffect(.bounce, value: portrait.isUpscaled)
+                Text(title).fontWeight(.medium)
+                Spacer(minLength: 0)
+                if !portrait.isUpscaled && !modelReady {
+                    if isDownloading {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.down.circle")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundStyle(.secondary)
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableButtonStyle())
+        .disabled(hardDisabled)
+        .opacity(hardDisabled ? 0.45 : 1)
+        .help(help)
+        .popover(isPresented: $showUpscalePopover, arrowEdge: .trailing) {
+            UpscaleInstallPopover(
+                manager: upscaleManager,
+                onRequestUpscale: {
+                    if upscaleManager.isAnyInstalled {
+                        showUpscalePopover = false
+                        ImportFlow.upscale(portrait: portrait, context: context, appState: appState,
+                                           modelManager: modelManager, upscaleManager: upscaleManager)
+                    } else {
+                        pendingUpscaleAfterInstall = true
+                    }
+                },
+                onDismiss: {
+                    showUpscalePopover = false
+                    pendingUpscaleAfterInstall = false
+                }
+            )
+        }
+        .onChange(of: upscaleManager.isAnyInstalled) { _, nowInstalled in
+            guard nowInstalled,
+                  showUpscalePopover,
+                  pendingUpscaleAfterInstall,
+                  !portrait.isUpscaled else { return }
+            pendingUpscaleAfterInstall = false
+            showUpscalePopover = false
+            ImportFlow.upscale(portrait: portrait, context: context, appState: appState,
+                               modelManager: modelManager, upscaleManager: upscaleManager)
+        }
     }
 
     // MARK: Extend Body (Pro feature)
@@ -1670,5 +1767,122 @@ struct AddBackgroundButton: View {
         }
         .padding(14)
         .frame(width: 240)
+    }
+}
+
+private struct UpscaleInstallPopover: View {
+    let manager: UpscaleModelManager
+    let onRequestUpscale: () -> Void
+    let onDismiss: () -> Void
+
+    @State private var variant: UpscaleModelManager.Variant
+
+    init(manager: UpscaleModelManager,
+         onRequestUpscale: @escaping () -> Void,
+         onDismiss: @escaping () -> Void) {
+        self.manager = manager
+        self.onRequestUpscale = onRequestUpscale
+        self.onDismiss = onDismiss
+        self._variant = State(initialValue: manager.selectedVariant)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(Loc.upscalePopoverTitle).font(.headline)
+                Text(Loc.upscalePopoverBlurb)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Picker("", selection: $variant) {
+                Text(Loc.upscaleVariant2x).tag(UpscaleModelManager.Variant.x2)
+                Text(Loc.upscaleVariant4x).tag(UpscaleModelManager.Variant.x4)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .onChange(of: variant) { _, new in
+                manager.selectedVariant = new
+            }
+            statusBlock
+        }
+        .padding(16)
+        .frame(width: 300)
+        .onDisappear { onDismiss() }
+    }
+
+    @ViewBuilder
+    private var statusBlock: some View {
+        switch manager.status(for: variant) {
+        case .notInstalled:
+            VStack(alignment: .leading, spacing: 8) {
+                Text(Loc.upscaleApproxSize)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Button {
+                    manager.selectedVariant = variant
+                    manager.downloadAndInstall(variant)
+                    onRequestUpscale()
+                } label: {
+                    Label(Loc.installAndUpscale, systemImage: "arrow.down.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+            }
+
+        case .downloading(let progress):
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(Loc.downloading).foregroundStyle(.secondary).font(.caption)
+                    Spacer()
+                    Text("\(Int(progress * 100))%")
+                        .font(.caption).monospacedDigit()
+                        .foregroundStyle(.tertiary)
+                }
+                ProgressView(value: progress)
+                HStack {
+                    Spacer()
+                    Button(Loc.cancel) { manager.cancelDownload(variant) }
+                        .controlSize(.small)
+                }
+            }
+
+        case .ready:
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    Text(Loc.modelAvailable)
+                }
+                Button {
+                    manager.selectedVariant = variant
+                    onRequestUpscale()
+                } label: {
+                    Label(Loc.upscaleNow, systemImage: "arrow.up.left.and.arrow.down.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+        case .error(let message):
+            VStack(alignment: .leading, spacing: 8) {
+                Label(Loc.error, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Spacer()
+                    Button(Loc.retry) {
+                        manager.downloadAndInstall(variant)
+                        onRequestUpscale()
+                    }
+                    .controlSize(.small)
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
     }
 }

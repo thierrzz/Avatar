@@ -80,6 +80,9 @@ final class Portrait {
     var preUpscaleHasEyes: Bool = false
     var preUpscaleInterEyeDistance: Double = 0
     var preUpscaleBodyBottomY: Double = 0
+    /// Which scale factor (2 or 4) produced the current upscale. Undo uses this
+    /// to multiply `scale` back by the same factor. Legacy portraits default to 2.
+    var preUpscaleFactor: Int = 2
 
     // MARK: - Pre-extend-body snapshot (so Extend Body can be toggled off)
     /// Whether the cutout has been extended downward via AI outpainting.

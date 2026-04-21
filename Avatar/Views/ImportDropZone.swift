@@ -24,6 +24,7 @@ struct ImportDropZone: View {
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8]))
                 .foregroundStyle(hovering ? Color.accentColor : Color.secondary.opacity(0.4))
+                .animation(.easeOut(duration: 0.15), value: hovering)
                 .padding(40)
         )
         .onDrop(of: [.fileURL, .image], isTargeted: $hovering) { providers in
@@ -32,15 +33,7 @@ struct ImportDropZone: View {
         }
         .overlay {
             if appState.isProcessing {
-                VStack(spacing: 12) {
-                    ProgressView().controlSize(.large)
-                    Text(Loc.processingPhoto)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(24)
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                ProcessingStatusView()
             }
             if let err = appState.lastError {
                 VStack {

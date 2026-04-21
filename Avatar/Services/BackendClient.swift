@@ -30,7 +30,7 @@ enum BackendError: LocalizedError {
 @MainActor
 final class BackendClient {
     /// Override for local dev / staging.
-    var baseURL: URL = URL(string: "https://api.aaavatar.nl")!
+    var baseURL: URL = URL(string: "https://avatars-api-five.vercel.app")!
 
     private unowned let auth: AuthManager
     private let session: URLSession

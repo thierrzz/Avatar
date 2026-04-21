@@ -37,7 +37,7 @@ struct ExportSheet: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableButtonStyle())
             }
             .padding()
 

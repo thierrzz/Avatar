@@ -1,18 +1,19 @@
-import { jwtVerify } from "jose";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET!);
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+
+// Supabase new-key architecture: access tokens are signed with an ECC P-256
+// key published at /auth/v1/.well-known/jwks.json. Legacy HS256 JWT shared
+// secret is intentionally not supported — project must have legacy JWT-based
+// API keys disabled in Settings → API Keys.
+const JWKS = createRemoteJWKSet(new URL(`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
 
 export type AuthedUser = {
   id: string;
   email?: string;
 };
 
-/**
- * Verifies the `Authorization: Bearer <jwt>` header against Supabase's JWT
- * secret (HS256). Returns the user on success; sends a 401 and returns null
- * on failure.
- */
 export async function requireUser(
   req: VercelRequest,
   res: VercelResponse,
@@ -23,17 +24,27 @@ export async function requireUser(
     res.status(401).json({ error: "Missing Authorization header" });
     return null;
   }
-  try {
-    const { payload } = await jwtVerify(m[1], secret, { algorithms: ["HS256"] });
-    const sub = typeof payload.sub === "string" ? payload.sub : null;
-    if (!sub) {
-      res.status(401).json({ error: "Invalid token" });
-      return null;
-    }
-    const email = typeof payload.email === "string" ? payload.email : undefined;
-    return { id: sub, email };
-  } catch {
+  const token = m[1];
+
+  const payload = await verifyToken(token);
+  if (!payload) {
     res.status(401).json({ error: "Invalid or expired token" });
+    return null;
+  }
+  const sub = typeof payload.sub === "string" ? payload.sub : null;
+  if (!sub) {
+    res.status(401).json({ error: "Invalid token" });
+    return null;
+  }
+  const email = typeof payload.email === "string" ? payload.email : undefined;
+  return { id: sub, email };
+}
+
+async function verifyToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    return payload;
+  } catch {
     return null;
   }
 }
