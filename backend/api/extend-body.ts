@@ -42,12 +42,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const devEmails = (process.env.DEV_UNLIMITED_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  const isDevUser = !!user.email && devEmails.includes(user.email.toLowerCase());
+
   try {
     await ensureUser(user.id);
-    const credits = await currentCredits(user.id);
-    if (credits < 1) {
-      res.status(402).json({ error: "No credits remaining" });
-      return;
+    if (!isDevUser) {
+      const credits = await currentCredits(user.id);
+      if (credits < 1) {
+        res.status(402).json({ error: "No credits remaining" });
+        return;
+      }
     }
 
     const inputs = await prepareOutpaintInputs(cutout);
@@ -63,13 +71,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const bytes = Buffer.from(await download.arrayBuffer());
 
-    // Deduct only on success.
-    await logCredit({
-      userId: user.id,
-      delta: -1,
-      reason: "extend_body",
-      ref: resultUrl,
-    });
+    // Deduct only on success. Dev-allowlisted users don't debit.
+    if (!isDevUser) {
+      await logCredit({
+        userId: user.id,
+        delta: -1,
+        reason: "extend_body",
+        ref: resultUrl,
+      });
+    }
 
     res.status(200).json({
       imageBase64: bytes.toString("base64"),

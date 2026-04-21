@@ -31,11 +31,39 @@ final class AppState {
     @ObservationIgnored
     private(set) lazy var backend: BackendClient = BackendClient(auth: auth)
 
+    /// Developer override: treat the current user as Pro locally and make
+    /// `refreshEntitlement()` keep the fake state instead of replacing it
+    /// with the backend payload. Persisted so it survives relaunches.
+    var isDebugPro: Bool = UserDefaults.standard.bool(forKey: Self.debugProKey) {
+        didSet {
+            UserDefaults.standard.set(isDebugPro, forKey: Self.debugProKey)
+            if isDebugPro {
+                proEntitlement.setDebug()
+            } else {
+                proEntitlement.clear()
+                refreshEntitlement()
+            }
+        }
+    }
+    private static let debugProKey = "debugProOverride"
+
+    init() {
+        if isDebugPro {
+            proEntitlement.setDebug()
+        }
+    }
+
     /// Fetches the latest entitlement from the backend. Silent on network
-    /// errors — keeps whatever state was previously cached.
+    /// errors — keeps whatever state was previously cached. When the debug
+    /// Pro override is on, the backend payload is ignored so the override
+    /// isn't clobbered on window appear / after checkout / after a 402.
     func refreshEntitlement() {
         guard auth.isSignedIn else {
-            proEntitlement.clear()
+            if !isDebugPro { proEntitlement.clear() }
+            return
+        }
+        if isDebugPro {
+            proEntitlement.setDebug()
             return
         }
         proEntitlement.isRefreshing = true

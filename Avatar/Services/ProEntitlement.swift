@@ -68,6 +68,14 @@ final class ProEntitlement {
         renewsAt = payload.renewsAt
         lastError = nil
     }
+
+    /// Used by the developer Pro toggle to impersonate a Plus user locally.
+    func setDebug() {
+        tier = .plus
+        credits = 50
+        renewsAt = Date().addingTimeInterval(30 * 24 * 3600)
+        lastError = nil
+    }
 }
 
 /// Server payload for `GET /api/me`.
