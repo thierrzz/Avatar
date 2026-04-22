@@ -34,9 +34,9 @@ final class AppState {
     /// Developer override: treat the current user as Pro locally and make
     /// `refreshEntitlement()` keep the fake state instead of replacing it
     /// with the backend payload. Persisted so it survives relaunches.
-    var isDebugPro: Bool = UserDefaults.standard.bool(forKey: Self.debugProKey) {
+    var isDebugPro: Bool = UserDefaults.standard.bool(forKey: AppState.debugProKey) {
         didSet {
-            UserDefaults.standard.set(isDebugPro, forKey: Self.debugProKey)
+            UserDefaults.standard.set(isDebugPro, forKey: AppState.debugProKey)
             if isDebugPro {
                 proEntitlement.setDebug()
             } else {

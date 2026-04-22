@@ -600,6 +600,42 @@ enum ImageProcessor {
         return kernel
     }()
 
+    /// Decode an IEEE 754 binary16 (half-precision) bit-pattern to Float32.
+    /// We roll this by hand because `Float(Float16(bitPattern:))` does not
+    /// compile on the x86_64 slice of a universal build — `Float16` on x86_64
+    /// lacks the `init(bitPattern:)` overload. Works on any architecture and
+    /// handles subnormals, infinities, and NaN.
+    @inline(__always)
+    private static func float16BitsToFloat(_ bits: UInt16) -> Float {
+        let sign = UInt32(bits >> 15) & 0x1
+        let exponent = UInt32(bits >> 10) & 0x1F
+        let mantissa = UInt32(bits) & 0x3FF
+        let f32Sign = sign << 31
+        let result: UInt32
+        if exponent == 0 {
+            if mantissa == 0 {
+                result = f32Sign
+            } else {
+                // Subnormal — normalize the mantissa into a float32 exponent.
+                var e: UInt32 = 0
+                var m = mantissa
+                while (m & 0x400) == 0 {
+                    m <<= 1
+                    e &+= 1
+                }
+                let f32Exp = (127 &- 15 &- e &+ 1) << 23
+                result = f32Sign | f32Exp | ((m & 0x3FF) << 13)
+            }
+        } else if exponent == 0x1F {
+            // Infinity or NaN — preserve by propagating mantissa bits.
+            result = f32Sign | (0xFF << 23) | (mantissa << 13)
+        } else {
+            let f32Exp = (exponent &+ (127 &- 15)) << 23
+            result = f32Sign | f32Exp | (mantissa << 13)
+        }
+        return Float(bitPattern: result)
+    }
+
     /// Extracts a grayscale mask CIImage from the first MLMultiArray output
     /// found in the prediction. Handles shapes like (1,1,H,W), (1,H,W), or (H,W)
     /// and both Float32 and Float16 data types.
@@ -627,10 +663,13 @@ enum ImageProcessor {
                     bytes[i] = UInt8(min(255, max(0, fp[i] * 255)))
                 }
             case .float16:
-                // Float16 is stored as UInt16 bit pattern.
+                // Float16 is stored as UInt16 bit pattern. We decode manually
+                // rather than via `Float(Float16(bitPattern:))` because that
+                // initializer isn't available when compiling for x86_64 (the
+                // universal-build slice), even on Swift 5.9+.
                 let fp = ptr.assumingMemoryBound(to: UInt16.self)
                 for i in 0..<count {
-                    let f = Float(Float16(bitPattern: fp[i]))
+                    let f = ImageProcessor.float16BitsToFloat(fp[i])
                     bytes[i] = UInt8(min(255, max(0, f * 255)))
                 }
             default:
@@ -968,13 +1007,15 @@ enum ImageProcessor {
                 }
             }
         case .float16:
-            // Float16 arrived in Swift 5.3; read as UInt16 bit-patterns and widen.
+            // Read Float16 as UInt16 bit-patterns and widen via a manual
+            // decoder — `Float(Float16(bitPattern:))` does not compile on
+            // the x86_64 slice of a universal build.
             let base = pointer.bindMemory(to: UInt16.self, capacity: array.count)
             for y in 0..<height {
                 for x in 0..<width {
-                    let r = Float(Float16(bitPattern: base[0 * cStride + y * hStride + x * wStride]))
-                    let g = Float(Float16(bitPattern: base[1 * cStride + y * hStride + x * wStride]))
-                    let b = Float(Float16(bitPattern: base[2 * cStride + y * hStride + x * wStride]))
+                    let r = ImageProcessor.float16BitsToFloat(base[0 * cStride + y * hStride + x * wStride])
+                    let g = ImageProcessor.float16BitsToFloat(base[1 * cStride + y * hStride + x * wStride])
+                    let b = ImageProcessor.float16BitsToFloat(base[2 * cStride + y * hStride + x * wStride])
                     let idx = (y * width + x) * 4
                     bytes[idx + 0] = byte(r)
                     bytes[idx + 1] = byte(g)
