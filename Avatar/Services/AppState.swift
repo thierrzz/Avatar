@@ -6,12 +6,28 @@ enum SettingsTab: String {
     case backgrounds, exportPresets, aiModel, updates, language
 }
 
+/// Kind of work currently reflected by `AppState.isProcessing`. Drives which
+/// rotating message set the loader shows — the cutout pipeline gets its own
+/// playful hair/background copy, the Upscale flow gets pixel-themed copy.
+enum ProcessingKind {
+    case generic
+    case upscale
+}
+
 @MainActor
 @Observable
 final class AppState {
     var selectedPortraitID: UUID?
     var isImporting = false
-    var isProcessing = false
+    var isProcessing = false {
+        didSet {
+            // Always reset to generic when a run ends so the next flow that
+            // flips isProcessing on without setting a kind gets the default
+            // messages, not a stale one from a prior upscale.
+            if !isProcessing { processingKind = .generic }
+        }
+    }
+    var processingKind: ProcessingKind = .generic
     var lastError: String?
 
     /// Which tab to select when the Settings window opens.

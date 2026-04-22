@@ -234,6 +234,7 @@ enum ImportFlow {
             return
         }
 
+        appState.processingKind = .upscale
         appState.isProcessing = true
         appState.lastError = nil
         print("[Upscale] start id=\(portrait.id) \(cg.width)×\(cg.height)")

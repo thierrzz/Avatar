@@ -4,14 +4,21 @@ import SwiftUI
 /// is being processed. Each message has its own dwell time, so punchlines
 /// linger and the whole sequence doesn't feel like a fixed loop restarting.
 struct ProcessingStatusView: View {
+    @Environment(AppState.self) private var appState
     @State private var index = 0
 
-    private var messages: [String] { Loc.processingStatuses }
+    private var messages: [String] {
+        switch appState.processingKind {
+        case .upscale: return Loc.upscaleStatuses
+        case .generic: return Loc.processingStatuses
+        }
+    }
 
     /// Per-message dwell times. Varying the cadence masks the loop —
     /// punchlines ("that's a lot of hair…") get an extra beat, transitions
-    /// stay snappy. Cycled modulo count for long waits.
-    private static let dwellTimes: [TimeInterval] = [
+    /// stay snappy. Cycled modulo count for long waits. The upscale kind
+    /// gets its own table because its punchline sits in a different slot.
+    private static let genericDwellTimes: [TimeInterval] = [
         2.4,  // Warming up the scissors…
         2.4,  // Removing the background…
         2.2,  // Touching up the hair…
@@ -24,8 +31,29 @@ struct ProcessingStatusView: View {
         2.6,  // Almost there, promise…
     ]
 
+    private static let upscaleDwellTimes: [TimeInterval] = [
+        2.4,  // Summoning extra pixels…
+        2.4,  // Zooming in on the details…
+        2.6,  // Teaching pixels to multiply…
+        3.2,  // Wow, that's a lot of pixels…  ← punchline, linger
+        2.4,  // Sharpening every edge…
+        2.4,  // Smoothing out the jaggies…
+        2.6,  // Restoring fine textures…
+        3.0,  // Asking each pixel twice…     ← linger
+        2.6,  // Polishing up close…
+        2.8,  // Almost there, promise…
+    ]
+
+    private var dwellTimes: [TimeInterval] {
+        switch appState.processingKind {
+        case .upscale: return Self.upscaleDwellTimes
+        case .generic: return Self.genericDwellTimes
+        }
+    }
+
     private var currentDwell: TimeInterval {
-        Self.dwellTimes[index % Self.dwellTimes.count]
+        let table = dwellTimes
+        return table[index % table.count]
     }
 
     var body: some View {

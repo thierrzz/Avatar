@@ -317,6 +317,35 @@ enum Loc {
         ]
     }
 
+    /// Playful rotating status messages shown while an Upscale is running.
+    /// Pixel-themed so it actually reads as "making the image bigger / sharper"
+    /// rather than the cutout pipeline's hair/background copy.
+    static var upscaleStatuses: [String] {
+        en ? [
+            "Summoning extra pixels…",
+            "Zooming in on the details…",
+            "Teaching pixels to multiply…",
+            "Wow, that's a lot of pixels…",
+            "Sharpening every edge…",
+            "Smoothing out the jaggies…",
+            "Restoring fine textures…",
+            "Asking each pixel twice…",
+            "Polishing up close…",
+            "Almost there, promise…",
+        ] : [
+            "Extra pixels oproepen…",
+            "Inzoomen op details…",
+            "Pixels leren vermenigvuldigen…",
+            "Oef, dat is veel pixels…",
+            "Elke rand scherper maken…",
+            "Kartels gladstrijken…",
+            "Fijne texturen herstellen…",
+            "Elke pixel twee keer vragen…",
+            "Van dichtbij polijsten…",
+            "Bijna klaar, echt waar…",
+        ]
+    }
+
     // MARK: Editor – Advanced model hint
     static var betterHairAvailable: String {
         en ? "Better hair quality available"
