@@ -31,3 +31,7 @@ Carthage/Build
 
 # Claude Code
 .claude/
+
+# RVM model source — cloned at conversion time by scripts/convert_rvm.py,
+# not part of our source tree.
+RobustVideoMatting/

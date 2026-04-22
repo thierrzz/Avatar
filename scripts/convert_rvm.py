@@ -183,15 +183,21 @@ def convert_to_coreml(weights_path: str, output_dir: str) -> str:
         def __init__(self, base_model, downsample_ratio: float):
             super().__init__()
             self.model = base_model
-            self.register_buffer(
-                "downsample_ratio", torch.tensor(downsample_ratio)
-            )
+            # Keep as a plain Python float, NOT a registered buffer. RVM's
+            # internal `_interpolate` passes scale_factor straight into
+            # F.interpolate, which only accepts a float in torch 2.x — a
+            # Tensor buffer would fail the dispatch. The float is baked
+            # into the traced graph as a constant either way.
+            self.downsample_ratio = float(downsample_ratio)
 
         def forward(self, x):
-            # Zero recurrent state — treat each frame independently.
-            zero = torch.zeros(1)
+            # Omit the recurrent state args — RVM's ConvGRU.forward
+            # self-initializes a zero tensor of the correct shape when
+            # h is None (see RobustVideoMatting/model/decoder.py). Passing
+            # zeros ourselves gets the shape wrong because the hidden size
+            # differs per decoder level.
             fgr, pha, *_ = self.model(
-                x, zero, zero, zero, zero, self.downsample_ratio
+                x, downsample_ratio=self.downsample_ratio
             )
             return fgr, pha
 
