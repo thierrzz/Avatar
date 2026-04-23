@@ -75,14 +75,46 @@ enum Loc {
            : "Knipt dit portret opnieuw uit met de Apple-pipeline. Positie en schaal blijven behouden."
     }
     static var upscale2x: String       { en ? "Upscale (2x)" : "Opschalen (2x)" }
+    static func upscaleNx(_ factor: Int) -> String {
+        en ? "Upscale (\(factor)×)" : "Opschalen (\(factor)×)"
+    }
     static var undoUpscale: String     { en ? "Undo Upscale" : "Opschalen ongedaan maken" }
     static var alreadyUpscaled: String {
         en ? "This portrait has already been upscaled."
            : "Dit portret is al opgeschaald."
     }
     static var upscaleHelp: String {
-        en ? "Upscales the original photo to 2× resolution and re-cuts for higher quality."
-           : "Schaalt de originele foto op naar 2× resolutie en knipt opnieuw uit voor hogere kwaliteit."
+        en ? "Uses an on-device AI model to recover detail and sharpen edges. Re-cuts the portrait from the higher-resolution result."
+           : "Gebruikt een on-device AI-model om details te herstellen en randen te verscherpen. Knipt het portret opnieuw uit vanaf het hogere-resolutiebeeld."
+    }
+    static var upscaleHelpNotInstalled: String {
+        en ? "Install the AI upscale model in Settings → AI Model to enable this."
+           : "Installeer het AI-opschaalmodel via Instellingen → AI-model om dit in te schakelen."
+    }
+    static var upscaleHelpTapToInstall: String {
+        en ? "Tap to install the AI upscale model."
+           : "Tik om het AI-opschaalmodel te installeren."
+    }
+    static var upscaleHelpDownloading: String {
+        en ? "Downloading the AI upscale model…"
+           : "AI-opschaalmodel wordt gedownload…"
+    }
+    static var upscalePopoverTitle: String {
+        en ? "AI upscale model" : "AI-opschaalmodel"
+    }
+    static var upscalePopoverBlurb: String {
+        en ? "Reconstructs detail in low-resolution photos using an on-device Real-ESRGAN model."
+           : "Herstelt details in foto's met lage resolutie met een on-device Real-ESRGAN-model."
+    }
+    static var upscaleApproxSize: String {
+        en ? "~50–100 MB download, installed once."
+           : "~50–100 MB download, eenmalig installeren."
+    }
+    static var installAndUpscale: String {
+        en ? "Install & upscale" : "Installeer & opschalen"
+    }
+    static var upscaleNow: String {
+        en ? "Upscale now" : "Opschalen"
     }
     static var undoUpscaleHelp: String {
         en ? "Revert to the original (non-upscaled) photo."
@@ -105,6 +137,96 @@ enum Loc {
         en ? "Revert to the original cutout without Magic Retouch."
            : "Herstel de originele uitknip zonder Magic Retouch."
     }
+
+    // MARK: Editor – Extend Body (Pro)
+    static var extendBody: String           { en ? "Extend Body" : "Body aanvullen" }
+    static var extendBodyUndo: String       { en ? "Undo Extend Body" : "Body aanvullen ongedaan maken" }
+    static var extendBodyHelp: String {
+        en ? "Use AI to generate missing shoulders and torso when your photo is cropped."
+           : "Gebruik AI om ontbrekende schouders en torso te genereren bij een afgekapte foto."
+    }
+    static var extendBodyUndoHelp: String {
+        en ? "Revert to the original (non-extended) cutout."
+           : "Herstel de originele (niet-uitgebreide) uitknip."
+    }
+    static var extendBodyAlreadyComplete: String {
+        en ? "Body is already fully visible — nothing to extend."
+           : "De body is al volledig zichtbaar — niets om aan te vullen."
+    }
+    static var extendBodyRequiresSignIn: String {
+        en ? "Sign in with Google to use Extend Body."
+           : "Meld je aan met Google om Body aanvullen te gebruiken."
+    }
+    static var extendBodyNoCutout: String {
+        en ? "Import a photo first." : "Importeer eerst een foto."
+    }
+    static func extendBodyFailed(_ err: String) -> String {
+        en ? "Extend Body failed: \(err)" : "Body aanvullen mislukt: \(err)"
+    }
+
+    // MARK: Paywall – Pro upgrade sheet
+    static var extendBodyUpgradeTitle: String {
+        en ? "Extend Body" : "Body aanvullen"
+    }
+    static var extendBodyUpgradeHeadline: String {
+        en ? "Extend Body is a Pro feature"
+           : "Body aanvullen is een Pro-functie"
+    }
+    static var extendBodyUpgradeSubtitle: String {
+        en ? "Generate missing shoulders and torso with AI. Choose a plan to get monthly credits."
+           : "Genereer ontbrekende schouders en torso met AI. Kies een abonnement voor maandelijkse credits."
+    }
+    static var extendBodyUpgradePopular: String {
+        en ? "Most popular" : "Populair"
+    }
+    static var extendBodyUpgradePerMonth: String {
+        en ? "/month" : "/maand"
+    }
+    static func extendBodyUpgradeCreditsPerMonth(_ n: Int) -> String {
+        en ? "\(n) extensions per month" : "\(n) aanvullingen per maand"
+    }
+    static var extendBodyUpgradeCTA: String {
+        en ? "Upgrade" : "Kies abonnement"
+    }
+    static var extendBodyUpgradeStarterDesc: String {
+        en ? "Enough for occasional cleanups — 20 generations each month."
+           : "Genoeg voor af en toe een aanvulling — 20 generaties per maand."
+    }
+    static var extendBodyUpgradePlusDesc: String {
+        en ? "Our most popular plan. 50 generations each month for regular work."
+           : "Ons populairste abonnement. 50 generaties per maand voor regelmatig werk."
+    }
+    static var extendBodyUpgradeStudioDesc: String {
+        en ? "For teams and power users. 150 generations each month."
+           : "Voor teams en power users. 150 generaties per maand."
+    }
+    static var extendBodyUpgradeFinePrint: String {
+        en ? "Cancel anytime. Credits reset at the start of each billing period."
+           : "Op elk moment opzegbaar. Credits resetten aan het begin van elke factuurperiode."
+    }
+    static var extendBodyUpgradeSignInFirst: String {
+        en ? "Please sign in first to manage your subscription."
+           : "Meld je eerst aan om je abonnement te beheren."
+    }
+
+    // MARK: Pro settings section
+    static var proSectionTitle: String      { en ? "Extend Body (Pro)" : "Body aanvullen (Pro)" }
+    static var proSignInWithGoogle: String  { en ? "Sign in with Google" : "Aanmelden met Google" }
+    static var proSignOut: String           { en ? "Sign out" : "Afmelden" }
+    static var proCurrentPlan: String       { en ? "Plan" : "Abonnement" }
+    static var proCreditsRemaining: String  { en ? "Credits remaining" : "Credits over" }
+    static var proRenewsAt: String          { en ? "Renews" : "Vernieuwt op" }
+    static var proManageSubscription: String {
+        en ? "Manage subscription" : "Beheer abonnement"
+    }
+    static var proNoSubscription: String {
+        en ? "No active subscription." : "Geen actief abonnement."
+    }
+    static var proUpgradeNow: String         { en ? "Upgrade" : "Upgraden" }
+
+    // MARK: Legal links
+    static var termsOfService: String       { en ? "Terms of Service" : "Algemene voorwaarden" }
+    static var privacyPolicy: String        { en ? "Privacy Policy" : "Privacybeleid" }
 
     // MARK: Editor – Adjustments
     static var colorAdjustments: String { en ? "Color Adjustments" : "Kleuraanpassingen" }
@@ -165,6 +287,64 @@ enum Loc {
            : "Drop foto hier voor een nieuw portret"
     }
     static var processingPhoto: String { en ? "Processing photo…" : "Foto verwerken…" }
+
+    /// Playful rotating status messages shown while a photo is processing.
+    /// Opens with a lively line so the loader never reads as generic
+    /// "Processing…"; later messages lean into the wait.
+    static var processingStatuses: [String] {
+        en ? [
+            "Warming up the scissors…",
+            "Removing the background…",
+            "Touching up the hair…",
+            "Wow, that's a lot of hair…",
+            "Sharpening the details…",
+            "Counting every pixel…",
+            "Polishing the edges…",
+            "Consulting the stylist…",
+            "Having second thoughts…",
+            "Almost there, promise…",
+        ] : [
+            "Schaartjes opwarmen…",
+            "Achtergrond verwijderen…",
+            "Haar bijwerken…",
+            "Oef, dat is veel haar…",
+            "Details aanscherpen…",
+            "Elke pixel tellen…",
+            "Randjes polijsten…",
+            "De stylist erbij halen…",
+            "Even twijfelen…",
+            "Bijna klaar, echt waar…",
+        ]
+    }
+
+    /// Playful rotating status messages shown while an Upscale is running.
+    /// Pixel-themed so it actually reads as "making the image bigger / sharper"
+    /// rather than the cutout pipeline's hair/background copy.
+    static var upscaleStatuses: [String] {
+        en ? [
+            "Summoning extra pixels…",
+            "Zooming in on the details…",
+            "Teaching pixels to multiply…",
+            "Wow, that's a lot of pixels…",
+            "Sharpening every edge…",
+            "Smoothing out the jaggies…",
+            "Restoring fine textures…",
+            "Asking each pixel twice…",
+            "Polishing up close…",
+            "Almost there, promise…",
+        ] : [
+            "Extra pixels oproepen…",
+            "Inzoomen op details…",
+            "Pixels leren vermenigvuldigen…",
+            "Oef, dat is veel pixels…",
+            "Elke rand scherper maken…",
+            "Kartels gladstrijken…",
+            "Fijne texturen herstellen…",
+            "Elke pixel twee keer vragen…",
+            "Van dichtbij polijsten…",
+            "Bijna klaar, echt waar…",
+        ]
+    }
 
     // MARK: Editor – Advanced model hint
     static var betterHairAvailable: String {
@@ -339,6 +519,32 @@ enum Loc {
     // MARK: Model manager errors
     static func modelLoadFailed(_ err: String) -> String {
         en ? "Failed to load model: \(err)" : "Model laden mislukt: \(err)"
+    }
+    static func upscaleModelLoadFailed(_ err: String) -> String {
+        en ? "Failed to load upscale model: \(err)" : "Opschaalmodel laden mislukt: \(err)"
+    }
+    static var upscaleModelNotInstalled: String {
+        en ? "No AI upscale model installed. Open Settings → AI Model to install one."
+           : "Geen AI-opschaalmodel geïnstalleerd. Open Instellingen → AI-model om er één te installeren."
+    }
+
+    // MARK: Upscale Settings UI
+    static var upscaleSectionTitle: String {
+        en ? "AI Upscale" : "AI-opschalen"
+    }
+    static var upscaleSectionDesc: String {
+        en ? "Reconstructs detail in low-resolution photos using an on-device Real-ESRGAN model. Choose a scale factor below."
+           : "Herstelt details in foto's met lage resolutie met behulp van een on-device Real-ESRGAN-model. Kies hieronder een schaalfactor."
+    }
+    static var upscaleVariant2x: String { en ? "2× (faster, lighter)" : "2× (sneller, lichter)" }
+    static var upscaleVariant4x: String { en ? "4× (stronger quality)" : "4× (sterkere kwaliteit)" }
+    static var upscaleActiveVariantLabel: String {
+        en ? "Active variant" : "Actieve variant"
+    }
+
+    // MARK: Editor dimensions caption
+    static func dimensionsLabel(_ w: Int, _ h: Int) -> String {
+        en ? "\(w) × \(h) px" : "\(w) × \(h) px"
     }
     static func downloadFailed(_ err: String) -> String {
         en ? "Download failed: \(err)" : "Download mislukt: \(err)"

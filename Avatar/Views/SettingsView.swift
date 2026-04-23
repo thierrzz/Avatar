@@ -215,8 +215,157 @@ struct ExportPresetsSettings: View {
 
 struct AIModelSettings: View {
     @Environment(ModelManager.self) private var modelManager
+    @Environment(UpscaleModelManager.self) private var upscaleManager
+    @Environment(AppState.self) private var appState
 
     var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                birefnetSection
+                Divider()
+                upscaleSection
+                Divider()
+                proSection
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Upscale section
+
+    @ViewBuilder
+    private var upscaleSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(Loc.upscaleSectionTitle).font(.headline)
+            Text(Loc.upscaleSectionDesc)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            UpscaleVariantCard(variant: .x2)
+            UpscaleVariantCard(variant: .x4)
+
+            if upscaleManager.isAnyInstalled {
+                GroupBox {
+                    HStack {
+                        Text(Loc.upscaleActiveVariantLabel)
+                            .font(.body.weight(.medium))
+                        Spacer()
+                        Picker("", selection: Binding(
+                            get: { upscaleManager.selectedVariant },
+                            set: { upscaleManager.selectedVariant = $0 }
+                        )) {
+                            Text(Loc.upscaleVariant2x).tag(UpscaleModelManager.Variant.x2)
+                            Text(Loc.upscaleVariant4x).tag(UpscaleModelManager.Variant.x4)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .fixedSize()
+                    }
+                    .padding(4)
+                }
+            }
+        }
+    }
+
+    // MARK: - Pro / Extend Body section
+
+    @ViewBuilder
+    private var proSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(Loc.proSectionTitle).font(.headline)
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "person.crop.rectangle.badge.plus")
+                            .font(.title2)
+                            .foregroundStyle(.tint)
+                            .frame(width: 32)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(Loc.extendBody).font(.body.weight(.medium))
+                            Text(Loc.extendBodyHelp)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    Divider()
+
+                    if !appState.auth.isSignedIn {
+                        Button {
+                            appState.auth.startSignIn()
+                        } label: {
+                            Label(Loc.proSignInWithGoogle, systemImage: "person.crop.circle.badge.checkmark")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    } else {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                if let email = appState.auth.email {
+                                    Text(email).font(.caption).foregroundStyle(.secondary)
+                                }
+                                if let tier = appState.proEntitlement.tier {
+                                    HStack(spacing: 6) {
+                                        Text(Loc.proCurrentPlan + ":")
+                                        Text(tier.displayName).fontWeight(.medium)
+                                    }
+                                    Text("\(Loc.proCreditsRemaining): \(appState.proEntitlement.credits)")
+                                    if let renews = appState.proEntitlement.renewsAt {
+                                        Text("\(Loc.proRenewsAt): \(renews.formatted(date: .abbreviated, time: .omitted))")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                } else {
+                                    Text(Loc.proNoSubscription)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 6) {
+                                if appState.proEntitlement.isPro {
+                                    Button(Loc.proManageSubscription) {
+                                        Task { await openPortal() }
+                                    }
+                                    .controlSize(.small)
+                                } else {
+                                    Button(Loc.proUpgradeNow) {
+                                        appState.showProUpgradeSheet = true
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.small)
+                                }
+                                Button(Loc.proSignOut) {
+                                    appState.auth.signOut()
+                                    appState.proEntitlement.clear()
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                    }
+                }
+                .padding(4)
+            }
+        }
+    }
+
+    @MainActor
+    private func openPortal() async {
+        do {
+            let url = try await appState.backend.openPortal()
+            NSWorkspace.shared.open(url)
+        } catch {
+            appState.lastError = (error as? LocalizedError)?.errorDescription
+        }
+    }
+
+    // MARK: - Existing BiRefNet section (renamed from `body`)
+
+    @ViewBuilder
+    private var birefnetSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(Loc.aiHairQuality).font(.headline)
 
@@ -343,6 +492,113 @@ struct AIModelSettings: View {
     }
 }
 
+// MARK: - Upscale variant card
+
+/// Install / progress / ready / error card for a single Real-ESRGAN variant.
+/// Shape mirrors the BiRefNet card but without the "use model" toggle —
+/// the active variant is chosen globally via the segmented picker above.
+private struct UpscaleVariantCard: View {
+    let variant: UpscaleModelManager.Variant
+    @Environment(UpscaleModelManager.self) private var manager
+
+    private var title: String {
+        variant == .x2 ? Loc.upscaleVariant2x : Loc.upscaleVariant4x
+    }
+
+    var body: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.title3)
+                        .foregroundStyle(.tint)
+                        .frame(width: 28)
+                    Text(title).font(.body.weight(.medium))
+                    Spacer()
+                }
+                Divider()
+
+                switch manager.status(for: variant) {
+                case .notInstalled:
+                    HStack {
+                        HStack(spacing: 4) {
+                            Image(systemName: "circle.dashed")
+                                .foregroundStyle(.secondary)
+                            Text(Loc.modelNotInstalled)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(Loc.installModel) {
+                            manager.downloadAndInstall(variant)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+
+                case .downloading(let progress):
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text(Loc.downloading)
+                                .foregroundStyle(.secondary)
+                        }
+                        ProgressView(value: progress)
+                        HStack {
+                            Text("\(Int(progress * 100))%")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                            Spacer()
+                            Button(Loc.cancel) {
+                                manager.cancelDownload(variant)
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+
+                case .ready:
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text(Loc.modelAvailable)
+                            }
+                            if let size = manager.installedSize(for: variant) {
+                                Text(Loc.sizeOnDisk(size))
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        Spacer()
+                        Button(Loc.delete, role: .destructive) {
+                            manager.deleteModel(variant)
+                        }
+                        .controlSize(.small)
+                    }
+
+                case .error(let message):
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label(Loc.error, systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                            Text(message)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(Loc.retry) {
+                            manager.downloadAndInstall(variant)
+                        }
+                        .controlSize(.small)
+                    }
+                }
+            }
+            .padding(4)
+        }
+    }
+}
+
 // MARK: - Updates
 
 struct UpdatesSettings: View {
@@ -403,7 +659,7 @@ struct UpdatesSettings: View {
                                   systemImage: "arrow.triangle.2.circlepath.circle.fill")
                             .foregroundStyle(.tint)
                             Spacer()
-                            Button(Loc.restart) {
+                            Button(Loc.relaunch) {
                                 updater.relaunchAndInstall()
                             }
                             .buttonStyle(.borderedProminent)
