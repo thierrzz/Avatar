@@ -4,6 +4,55 @@ import AppKit
 import UniformTypeIdentifiers
 import CoreML
 
+/// Supported image types for import.
+private let supportedImageUTIs: Set<String> = [
+    UTType.jpeg.identifier,
+    UTType.png.identifier,
+    UTType.heic.identifier,
+    UTType.tiff.identifier,
+    UTType.bmp.identifier,
+    UTType.gif.identifier,
+]
+
+/// Checks if the file extension is a supported image type.
+private func isSupportedImageFile(_ url: URL) -> Bool {
+    guard let ext = url.pathExtension.lowercased() as String? else { return false }
+    switch ext {
+    case "jpg", "jpeg", "png", "heic", "heif", "tiff", "tif", "bmp", "gif": return true
+    default: return false
+    }
+}
+
+/// Simple image format validation (magic bytes).
+private func isValidImageData(_ data: Data) -> Bool {
+    guard data.count >= 12 else { return false }
+    let bytes = [UInt8](data.prefix(12))
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 { return true }
+    // JPEG: FF D8 FF
+    if bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF { return true }
+    // GIF: 47 49 46 38
+    if bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x38 { return true }
+    // BMP / TIFF: starts with "BM" or "II" or "MM"
+    if bytes[0] == 0x42 && bytes[1] == 0x4D { return true }
+    if bytes[0] == 0x49 && bytes[1] == 0x49 { return true }
+    if bytes[0] == 0x4D && bytes[1] == 0x4D { return true }
+    return false
+}
+
+/// Logs and swallows save errors to avoid crashing the UI on transient issues.
+/// Uses os_log in production; good for debugging.
+@discardableResult
+private func save(_ context: ModelContext) -> Bool {
+    do {
+        try context.save()
+        return true
+    } catch {
+        print("[Save] failed: \(error)")
+        return false
+    }
+}
+
 /// Centralised drop-handler used by every view that should accept a portrait
 /// drag-and-drop (the empty-state import zone AND the editor surface, so users
 /// can drop a fresh photo at any time without going back to an empty state).
@@ -31,6 +80,14 @@ enum PortraitDropHandler {
                     }
                     return
                 }
+                guard isSupportedImageFile(url) else {
+                    Task { @MainActor in
+                        appState.isProcessing = false
+                        appState.lastError = Loc.unknownFileType
+                        print("[Drop] unsupported file type: \(url.pathExtension)")
+                    }
+                    return
+                }
                 Task { @MainActor in
                     ImportFlow.importFile(url: url, context: context, appState: appState,
                                          modelManager: modelManager)
@@ -46,6 +103,14 @@ enum PortraitDropHandler {
                     Task { @MainActor in
                         appState.isProcessing = false
                         appState.lastError = Loc.dropImageUnreadable
+                    }
+                    return
+                }
+                guard isValidImageData(data) else {
+                    Task { @MainActor in
+                        appState.isProcessing = false
+                        appState.lastError = Loc.unknownFileType
+                        print("[Drop] invalid image data")
                     }
                     return
                 }
@@ -191,7 +256,7 @@ enum ImportFlow {
                     fresh.isMagicRetouched = false
                     fresh.preRetouchPNG = nil
                     fresh.updatedAt = Date()
-                    try? context.save()
+                    save(context)
                     // Purge any cached decoded cutout so the editor shows the
                     // refreshed PNG on next access.
                     appState.invalidateCutout(for: fresh)
@@ -314,7 +379,7 @@ enum ImportFlow {
                     fresh.isMagicRetouched = false
                     fresh.preRetouchPNG = nil
                     fresh.updatedAt = Date()
-                    try? context.save()
+                    save(context)
                     appState.invalidateCutout(for: fresh)
                     appState.isProcessing = false
                     print("[Upscale] DONE id=\(fresh.id) factor=\(factor)")
@@ -363,7 +428,7 @@ enum ImportFlow {
         portrait.preUpscaleOriginalData = nil
         portrait.preUpscaleCutoutPNG = nil
         portrait.updatedAt = Date()
-        try? context.save()
+        save(context)
         appState.invalidateCutout(for: portrait)
     }
 
@@ -413,7 +478,7 @@ enum ImportFlow {
                 fresh.cutoutPNG = pngData
                 fresh.isMagicRetouched = true
                 fresh.updatedAt = Date()
-                try? context.save()
+                save(context)
                 appState.invalidateCutout(for: fresh)
                 appState.isProcessing = false
                 print("[MagicRetouch] DONE id=\(fresh.id)")
@@ -428,7 +493,7 @@ enum ImportFlow {
         portrait.preRetouchPNG = nil
         portrait.isMagicRetouched = false
         portrait.updatedAt = Date()
-        try? context.save()
+        save(context)
         appState.invalidateCutout(for: portrait)
     }
 
@@ -493,7 +558,7 @@ enum ImportFlow {
                 }
                 fresh.isBodyExtended = true
                 fresh.updatedAt = Date()
-                try? context.save()
+                save(context)
 
                 // Refresh entitlement so the credits counter reflects the spend.
                 appState.refreshEntitlement()
@@ -529,7 +594,7 @@ enum ImportFlow {
         portrait.isBodyExtended = false
         portrait.preExtendBodyCutoutPNG = nil
         portrait.updatedAt = Date()
-        try? context.save()
+        save(context)
         appState.invalidateCutout(for: portrait)
     }
 
@@ -581,7 +646,7 @@ enum ImportFlow {
                     scale: Double(transform.scale)
                 )
                 context.insert(portrait)
-                try? context.save()
+                save(context)
                 appState.selectedPortraitID = portrait.id
                 appState.isProcessing = false
                 print("[Import] DONE id=\(portrait.id)")

@@ -102,20 +102,43 @@ final class AppState {
 
     /// In-memory cache of decoded cutout CGImages keyed by portrait id,
     /// so the editor doesn't re-decode on every redraw.
+    /// Limited to prevent unbounded memory growth.
     private var cutoutCache: [UUID: CGImage] = [:]
+    private var cutoutCacheOrder: [UUID] = []
+    private static let maxCacheCount = 32
     /// In-memory cache of the adjusted cutout (base cutout + CIFilter chain),
     /// keyed by portrait id. Stored with the adjustments' hash so we can
     /// invalidate as soon as any slider changes value.
     private var adjustedCutoutCache: [UUID: (key: Int, image: CGImage)] = [:]
+    private var adjustedCacheOrder: [UUID] = []
     /// In-memory cache of decoded background images keyed by preset id.
     private var backgroundCache: [UUID: CGImage] = [:]
+    private var backgroundCacheOrder: [UUID] = []
 
     func cutout(for portrait: Portrait) -> CGImage? {
-        if let cached = cutoutCache[portrait.id] { return cached }
+        if let cached = cutoutCache[portrait.id] {
+            moveToFront(id: portrait.id, in: &cutoutCacheOrder)
+            return cached
+        }
         guard let data = portrait.cutoutPNG,
               let img = ImageProcessor.cgImage(from: data) else { return nil }
+        evictIfNeeded()
         cutoutCache[portrait.id] = img
+        cutoutCacheOrder.insert(portrait.id, at: 0)
         return img
+    }
+
+    private func evictIfNeeded() {
+        while cutoutCache.count >= Self.maxCacheCount, let last = cutoutCacheOrder.popLast() {
+            cutoutCache.removeValue(forKey: last)
+        }
+    }
+
+    private func moveToFront(id: UUID, in order: inout [UUID]) {
+        if let idx = order.firstIndex(of: id) {
+            order.remove(at: idx)
+        }
+        order.insert(id, at: 0)
     }
 
     /// Returns the cutout with the portrait's current adjustments applied.
@@ -127,35 +150,45 @@ final class AppState {
         if adj.isNeutral { return base }
         let key = adj.hashValue
         if let hit = adjustedCutoutCache[portrait.id], hit.key == key {
+            moveToFront(id: portrait.id, in: &adjustedCacheOrder)
             return hit.image
         }
         guard let rendered = ImageAdjustmentRenderer.apply(adj, to: base) else {
             return base
         }
         adjustedCutoutCache[portrait.id] = (key, rendered)
+        adjustedCacheOrder.insert(portrait.id, at: 0)
         return rendered
     }
 
     func invalidateCutout(for portrait: Portrait) {
         cutoutCache.removeValue(forKey: portrait.id)
+        cutoutCacheOrder.removeAll { $0 == portrait.id }
         adjustedCutoutCache.removeValue(forKey: portrait.id)
+        adjustedCacheOrder.removeAll { $0 == portrait.id }
     }
 
     func invalidateAdjusted(for portrait: Portrait) {
         adjustedCutoutCache.removeValue(forKey: portrait.id)
+        adjustedCacheOrder.removeAll { $0 == portrait.id }
     }
 
     func backgroundImage(for preset: BackgroundPreset) -> CGImage? {
         guard preset.kind == .image else { return nil }
-        if let cached = backgroundCache[preset.id] { return cached }
+        if let cached = backgroundCache[preset.id] {
+            moveToFront(id: preset.id, in: &backgroundCacheOrder)
+            return cached
+        }
         guard preset.modelContext != nil,
               let data = preset.imageData,
               let img = ImageProcessor.cgImage(from: data) else { return nil }
         backgroundCache[preset.id] = img
+        backgroundCacheOrder.insert(preset.id, at: 0)
         return img
     }
 
     func invalidateBackground(_ preset: BackgroundPreset) {
         backgroundCache.removeValue(forKey: preset.id)
+        backgroundCacheOrder.removeAll { $0 == preset.id }
     }
 }

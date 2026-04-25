@@ -3,6 +3,18 @@ import SwiftData
 import AppKit
 import UniformTypeIdentifiers
 
+/// Logs and swallows save errors to avoid crashing the UI on transient issues.
+@discardableResult
+private func save(_ context: ModelContext) -> Bool {
+    do {
+        try context.save()
+        return true
+    } catch {
+        print("[Save] failed: \(error)")
+        return false
+    }
+}
+
 struct EditorView: View {
     @Bindable var portrait: Portrait
     @Environment(\.modelContext) private var context
@@ -218,7 +230,7 @@ struct EditorView: View {
                         canvasSide: side,
                         cutoutSize: cutoutSize,
                         isVisible: imageSelected,
-                        onCommit: { try? context.save() }
+                        onCommit: { save(context) }
                     )
                 }
                 .frame(width: side, height: side)
@@ -346,7 +358,7 @@ struct EditorView: View {
             }
             .onEnded { _ in
                 if let before = dragUndoSnapshot {
-                    try? context.save()
+                    save(context)
                     PortraitUndoManager.registerFromSnapshots(
                         before: before,
                         after: PortraitUndoManager.snapshot(of: portrait),
@@ -356,7 +368,7 @@ struct EditorView: View {
                         actionName: Loc.moveAction
                     )
                 } else {
-                    try? context.save()
+                    save(context)
                 }
                 dragStart = nil
                 dragUndoSnapshot = nil
@@ -449,7 +461,7 @@ struct EditorView: View {
                     .frame(width: 16)
                 TextField(Loc.employeeName, text: $portrait.name)
                     .textFieldStyle(.plain)
-                    .onChange(of: portrait.name) { _, _ in try? context.save() }
+                    .onChange(of: portrait.name) { save(context) }
             }
             HStack(spacing: 8) {
                 Image(systemName: "tag")
@@ -457,7 +469,7 @@ struct EditorView: View {
                     .frame(width: 16)
                 TextField(Loc.role, text: $portrait.tags)
                     .textFieldStyle(.plain)
-                    .onChange(of: portrait.tags) { _, _ in try? context.save() }
+                    .onChange(of: portrait.tags) { save(context) }
             }
         } header: {
             Text(Loc.info)
@@ -504,7 +516,7 @@ struct EditorView: View {
                                 trackSliderUndo(actionName: Loc.scale)
                                 portrait.scale = $0
                                 portrait.updatedAt = Date()
-                                try? context.save()
+                                save(context)
                             }
                         ),
                         in: 0.05...4.0
@@ -542,7 +554,7 @@ struct EditorView: View {
         trackSliderUndo(actionName: Loc.scale)
         portrait.scale = min(4.0, max(0.05, portrait.scale + delta))
         portrait.updatedAt = Date()
-        try? context.save()
+        save(context)
         #if os(macOS)
         haptics.perform(.generic, performanceTime: .now)
         #endif
@@ -863,7 +875,7 @@ struct EditorView: View {
                             value.wrappedValue = snapped
                             portrait.updatedAt = Date()
                             appState.invalidateAdjusted(for: portrait)
-                            try? context.save()
+                            save(context)
                         }
                     ),
                     in: range
@@ -894,7 +906,7 @@ struct EditorView: View {
         portrait.adjShadows = 0
         portrait.updatedAt = Date()
         appState.invalidateAdjusted(for: portrait)
-        try? context.save()
+        save(context)
         PortraitUndoManager.registerFromSnapshots(
             before: before,
             after: PortraitUndoManager.snapshot(of: portrait),
@@ -948,7 +960,7 @@ struct EditorView: View {
         portrait.offsetX = Double(t.offset.width)
         portrait.offsetY = Double(t.offset.height)
         portrait.updatedAt = Date()
-        try? context.save()
+        save(context)
         PortraitUndoManager.registerFromSnapshots(
             before: before,
             after: PortraitUndoManager.snapshot(of: portrait),
@@ -1487,13 +1499,13 @@ struct BackgroundPicker: View {
         PortraitUndoManager.beginChange(for: portrait, context: context, undoManager: undoManager, appState: appState, actionName: Loc.backgroundAction)
         portrait.backgroundPresetID = bg.id
         portrait.updatedAt = Date()
-        try? context.save()
+        save(context)
     }
 
     private func setDefault(_ bg: BackgroundPreset) {
         for other in backgrounds { other.isDefault = false }
         bg.isDefault = true
-        try? context.save()
+        save(context)
     }
 
     private func delete(_ bg: BackgroundPreset) {
@@ -1506,7 +1518,7 @@ struct BackgroundPicker: View {
         }
         appState.invalidateBackground(bg)
         context.delete(bg)
-        try? context.save()
+        save(context)
     }
 
     private func addNewBackground(_ kind: AddBackgroundKind) {
@@ -1520,7 +1532,7 @@ struct BackgroundPicker: View {
                 color: (r, g, b, 1.0)
             )
             context.insert(bg)
-            try? context.save()
+            save(context)
             select(bg)
         }
     }
@@ -1536,7 +1548,7 @@ struct BackgroundPicker: View {
             let name = url.deletingPathExtension().lastPathComponent
             let bg = BackgroundPreset(name: name, kind: .image, imageData: data)
             context.insert(bg)
-            try? context.save()
+            save(context)
             select(bg)
         }
         #endif
@@ -1659,7 +1671,7 @@ struct BackgroundChip: View {
         let trimmed = editName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             preset.name = trimmed
-            try? context.save()
+            save(context)
         }
         isRenaming = false
     }

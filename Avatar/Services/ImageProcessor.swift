@@ -476,6 +476,24 @@ enum ImageProcessor {
             "inputMaskImage": ring
         ]).cropped(to: extent)
 
+        // RVM (v5) outputs a continuous matte — interior body pixels can
+        // land at α≈0.6–0.9, which composites the shirt semi-transparent
+        // against the new backdrop. Floor the interior at 1.0 by max-
+        // blending a binarized+eroded body core into the final alpha.
+        // Eroding well inside the silhouette keeps the solid region from
+        // intruding on the hair feather ring. Max-blending is monotonic
+        // so hair alpha in the ring can only stay the same or increase.
+        let solidifyR = 8.0 * scale
+        let binarized = guided.applyingFilter("CIColorThreshold", parameters: [
+            "inputThreshold": 0.5
+        ]).cropped(to: extent)
+        let solidCore = binarized
+            .applyingFilter("CIMorphologyMinimum", parameters: [kCIInputRadiusKey: solidifyR])
+            .cropped(to: extent)
+        let finalAlpha = softened.applyingFilter("CIMaximumCompositing", parameters: [
+            kCIInputBackgroundImageKey: solidCore
+        ]).cropped(to: extent)
+
         // Recover unmixed foreground RGB before compositing. Without this,
         // hair strands still carry `α·F + (1−α)·B_old` — the original
         // background bleeds through against any new backdrop. Blur-fusion
@@ -487,7 +505,7 @@ enum ImageProcessor {
         // Composite: refined foreground RGB + feathered alpha matte.
         let clearBG = CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 0))
             .cropped(to: extent)
-        let alphaMatte = softened.applyingFilter("CIMaskToAlpha")
+        let alphaMatte = finalAlpha.applyingFilter("CIMaskToAlpha")
         let composed = refinedFG.applyingFilter("CIBlendWithMask", parameters: [
             "inputBackgroundImage": clearBG,
             "inputMaskImage": alphaMatte

@@ -1,0 +1,6 @@
+MARKETING_VERSION = 1.0
+CURRENT_PROJECT_VERSION = 1
+
+// Supabase configuration
+SUPABASE_URL = https://acmnyvdzjxayynmtnsav.supabase.co
+SUPABASE_PUBLISHABLE_KEY = sb_publishable_eW5edOEumcjLO1l_4UFdgQ_cfau6krh

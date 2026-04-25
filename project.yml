@@ -64,3 +64,6 @@ targets:
         ENABLE_PREVIEWS: YES
         COMBINE_HIDPI_IMAGES: YES
         CODE_SIGN_ENTITLEMENTS: Avatar/Avatar.entitlements
+      configs:
+        Debug:
+          configurationSettingsFile: Avatar/Config.xcconfig

@@ -17,6 +17,8 @@
 		2CC00BB877BB10A664982FB7 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355D09CA2450C106801EAD77 /* ModelManager.swift */; };
 		430A107B1D3198CE9ECDBA44 /* ProBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DED2448B10A7B5504F841578 /* ProBadge.swift */; };
 		4341E7B1ED1B23CD51BBAF22 /* logo.png in Resources */ = {isa = PBXBuildFile; fileRef = F1CAAB87E8E174A425083C2F /* logo.png */; };
+		462CA9949E2A3E396FD5BC74 /* UpscaleModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D4E6CBAC26BB9371D0204BF /* UpscaleModelManager.swift */; };
+		49C843F56791B3F2BB43B01E /* ModelContext+Save.swift in Sources */ = {isa = PBXBuildFile; fileRef = 873B8A800EFCA028B84031DB /* ModelContext+Save.swift */; };
 		58C7C65381A278B69B016DDB /* MainWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877D5A42F98746FCC7A61452 /* MainWindow.swift */; };
 		598E5AA5D1B64C6A66AE5249 /* ProEntitlement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A841E6FEC3AA3A21B4DC50 /* ProEntitlement.swift */; };
 		605465E10F824BC86E259CC6 /* ImportFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B313E53EBD6AC732524D4690 /* ImportFlow.swift */; };
@@ -25,12 +27,12 @@
 		68A855F7FE00A495A4F48EFB /* ProcessingStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6174C4006B70AA84DC47783 /* ProcessingStatusView.swift */; };
 		6B544FC0626AD4CC467ECC79 /* ImageAdjustments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8024D84C778A83045FEA287D /* ImageAdjustments.swift */; };
 		6C8929F949C422C5AC550163 /* logo.svg in Resources */ = {isa = PBXBuildFile; fileRef = DB0C0C9C43AFC1383D6C54E2 /* logo.svg */; };
+		72482E9FF888BF58E4AE065D /* DebugProToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6EAA0A57FA529E4FA09F48E /* DebugProToggle.swift */; };
 		89C89D347949E200275051E3 /* BackgroundPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCB0455D6E65138F7848400 /* BackgroundPreset.swift */; };
 		907825C4E49476725FA34C78 /* Mesh 05.png in Resources */ = {isa = PBXBuildFile; fileRef = 5DE64240C8D2B68EB34AA721 /* Mesh 05.png */; };
 		93DE69BFD660664855889F69 /* Portrait.swift in Sources */ = {isa = PBXBuildFile; fileRef = A781DB69220F07CD4C7450BC /* Portrait.swift */; };
 		9BEB5AA558E17FA90A34DCB5 /* Mesh 04.png in Resources */ = {isa = PBXBuildFile; fileRef = ECB59382EAC176D9739FE9C7 /* Mesh 04.png */; };
 		9CDEBB9401C040885B7B35B8 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A67F34619015B892E51F8BA0 /* ExportService.swift */; };
-		A1B2C3D4E5F6A7B8C9D0E1F3 /* UpscaleModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* UpscaleModelManager.swift */; };
 		A6AB056EC5348AFDA387F49E /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EF633AE84A1D2EF9412998 /* LibraryView.swift */; };
 		AEB460C0337997C6FA65993A /* BulkAligner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C29944A4F31F74C9CD6F54 /* BulkAligner.swift */; };
 		B03C58275150A57C7CAE9B41 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5127F7FAC6DD92487E178E76 /* AppState.swift */; };
@@ -43,26 +45,26 @@
 		D43723746F3532F825382CAB /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 349CA2BF8E0D0316D4C6EC9F /* Localization.swift */; };
 		D4851113A8AB34D81F2CE4EE /* SeedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1FE0D21D63DDB8E786DDDF /* SeedData.swift */; };
 		D5239F6F44EDD048CCD08D5F /* Mesh 03.png in Resources */ = {isa = PBXBuildFile; fileRef = 947924202C732493D553BD14 /* Mesh 03.png */; };
-		DBG01F0E1A5B4C8E9AF20DE0 /* DebugProToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBG0F1E20A5B4C8E9AF30DE1 /* DebugProToggle.swift */; };
 		DCD584C8769017840D8AC9CB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 68ED8B66E0CC1A6CA182DCCB /* Assets.xcassets */; };
 		E20E4C1FAB7C8E7057EBF08F /* Mesh 02.png in Resources */ = {isa = PBXBuildFile; fileRef = E21A227552D65C64EBB609A5 /* Mesh 02.png */; };
+		E591BE03D14322F93DF5CBB5 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29693AE9839C2E40136C758E /* SupabaseConfig.swift */; };
 		E8AF2A53C52B50C4453C65B2 /* Compositor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBFBA66AF626E08F10F1333C /* Compositor.swift */; };
 		EA95637F18182FB90D97FCA5 /* Mesh 06.png in Resources */ = {isa = PBXBuildFile; fileRef = 0F7453266932AB3B263A665E /* Mesh 06.png */; };
 		EAA5F4DF5638ED9457ED418F /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA293E7F1CF952594B0EB25E /* UpdateManager.swift */; };
 		EBE90C07C35BAA7F586C5E6D /* PortraitUndoManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7194822E14F9864C38869D98 /* PortraitUndoManager.swift */; };
 		EDCEBBF69658512E9483D13B /* SidebarUpdateCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33D997F6414EDD2CF3ED01B3 /* SidebarUpdateCard.swift */; };
 		F0D56262FE85216D1648099E /* ExportPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E1236EB27F5CE8A83B67DF /* ExportPreset.swift */; };
-		F1A5B8C400D11E8F00000001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = F1A5B8C400D11E8F00000002 /* Supabase */; };
-		F1A5B8C400D11E8F00000011 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A5B8C400D11E8F00000010 /* SupabaseConfig.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0F7453266932AB3B263A665E /* Mesh 06.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 06.png"; sourceTree = "<group>"; };
 		130A60B0BF158CAEE0CB1E30 /* ProUpgradeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProUpgradeSheet.swift; sourceTree = "<group>"; };
+		29693AE9839C2E40136C758E /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		33D997F6414EDD2CF3ED01B3 /* SidebarUpdateCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarUpdateCard.swift; sourceTree = "<group>"; };
 		347ADAFAC02950562F82CBF4 /* URLSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSchemeHandler.swift; sourceTree = "<group>"; };
 		349CA2BF8E0D0316D4C6EC9F /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		355D09CA2450C106801EAD77 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
+		43E434DA15AF28D052ECB33F /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		4778A879B8B175895EEE6AA3 /* ExtendBodyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtendBodyService.swift; sourceTree = "<group>"; };
 		48EF633AE84A1D2EF9412998 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		5127F7FAC6DD92487E178E76 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
@@ -74,23 +76,24 @@
 		8024D84C778A83045FEA287D /* ImageAdjustments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageAdjustments.swift; sourceTree = "<group>"; };
 		81A841E6FEC3AA3A21B4DC50 /* ProEntitlement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProEntitlement.swift; sourceTree = "<group>"; };
 		81C29944A4F31F74C9CD6F54 /* BulkAligner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulkAligner.swift; sourceTree = "<group>"; };
+		873B8A800EFCA028B84031DB /* ModelContext+Save.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelContext+Save.swift"; sourceTree = "<group>"; };
 		877D5A42F98746FCC7A61452 /* MainWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindow.swift; sourceTree = "<group>"; };
 		947924202C732493D553BD14 /* Mesh 03.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 03.png"; sourceTree = "<group>"; };
 		97E1236EB27F5CE8A83B67DF /* ExportPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportPreset.swift; sourceTree = "<group>"; };
 		9D18F070EDD3795562BD0ADC /* DefaultBackground.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = DefaultBackground.png; sourceTree = "<group>"; };
+		9D4E6CBAC26BB9371D0204BF /* UpscaleModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpscaleModelManager.swift; sourceTree = "<group>"; };
 		A09E65B08B3DB5530D416B59 /* ImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProcessor.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6A7B8C9D0E1F2 /* UpscaleModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpscaleModelManager.swift; sourceTree = "<group>"; };
 		A67F34619015B892E51F8BA0 /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		A781DB69220F07CD4C7450BC /* Portrait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portrait.swift; sourceTree = "<group>"; };
 		B313E53EBD6AC732524D4690 /* ImportFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportFlow.swift; sourceTree = "<group>"; };
 		B6174C4006B70AA84DC47783 /* ProcessingStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingStatusView.swift; sourceTree = "<group>"; };
+		B6EAA0A57FA529E4FA09F48E /* DebugProToggle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugProToggle.swift; sourceTree = "<group>"; };
 		BBCB0455D6E65138F7848400 /* BackgroundPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundPreset.swift; sourceTree = "<group>"; };
 		BF5D10603D8C4CBCEBF63691 /* ExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportSheet.swift; sourceTree = "<group>"; };
 		C1191A20AC32839CBA5B4807 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		C61EA8ABE1B5D7EDE1478FCF /* AvatarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarApp.swift; sourceTree = "<group>"; };
 		CBFBA66AF626E08F10F1333C /* Compositor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Compositor.swift; sourceTree = "<group>"; };
-		DB0C0C9C43AFC1383D6C54E2 /* logo.svg */ = {isa = PBXFileReference; lastKnownFileType = text; path = logo.svg; sourceTree = "<group>"; };
-		DBG0F1E20A5B4C8E9AF30DE1 /* DebugProToggle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugProToggle.swift; sourceTree = "<group>"; };
+		DB0C0C9C43AFC1383D6C54E2 /* logo.svg */ = {isa = PBXFileReference; path = logo.svg; sourceTree = "<group>"; };
 		DE999750B624A66B1CAC75E3 /* BackendClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendClient.swift; sourceTree = "<group>"; };
 		DED2448B10A7B5504F841578 /* ProBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProBadge.swift; sourceTree = "<group>"; };
 		E21A227552D65C64EBB609A5 /* Mesh 02.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 02.png"; sourceTree = "<group>"; };
@@ -98,7 +101,6 @@
 		EC7660BC4B678CC5A24BDEB7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		ECB59382EAC176D9739FE9C7 /* Mesh 04.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Mesh 04.png"; sourceTree = "<group>"; };
 		EECE2EA74BCD5AA894A3864C /* AutoAligner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoAligner.swift; sourceTree = "<group>"; };
-		F1A5B8C400D11E8F00000010 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		F1CAAB87E8E174A425083C2F /* logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = logo.png; sourceTree = "<group>"; };
 		F2B1C3A5D25B8EA4299A5A39 /* ImportDropZone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportDropZone.swift; sourceTree = "<group>"; };
 		FA1FE0D21D63DDB8E786DDDF /* SeedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedData.swift; sourceTree = "<group>"; };
@@ -111,7 +113,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				BCB144F53A50F7E154817D1C /* Sparkle in Frameworks */,
-				F1A5B8C400D11E8F00000001 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -133,13 +134,14 @@
 				A09E65B08B3DB5530D416B59 /* ImageProcessor.swift */,
 				B313E53EBD6AC732524D4690 /* ImportFlow.swift */,
 				349CA2BF8E0D0316D4C6EC9F /* Localization.swift */,
+				873B8A800EFCA028B84031DB /* ModelContext+Save.swift */,
 				355D09CA2450C106801EAD77 /* ModelManager.swift */,
-				A1B2C3D4E5F6A7B8C9D0E1F2 /* UpscaleModelManager.swift */,
 				7194822E14F9864C38869D98 /* PortraitUndoManager.swift */,
 				81A841E6FEC3AA3A21B4DC50 /* ProEntitlement.swift */,
 				FA1FE0D21D63DDB8E786DDDF /* SeedData.swift */,
-				F1A5B8C400D11E8F00000010 /* SupabaseConfig.swift */,
+				29693AE9839C2E40136C758E /* SupabaseConfig.swift */,
 				EA293E7F1CF952594B0EB25E /* UpdateManager.swift */,
+				9D4E6CBAC26BB9371D0204BF /* UpscaleModelManager.swift */,
 				347ADAFAC02950562F82CBF4 /* URLSchemeHandler.swift */,
 			);
 			path = Services;
@@ -150,6 +152,7 @@
 			children = (
 				68ED8B66E0CC1A6CA182DCCB /* Assets.xcassets */,
 				C61EA8ABE1B5D7EDE1478FCF /* AvatarApp.swift */,
+				43E434DA15AF28D052ECB33F /* Config.xcconfig */,
 				C891EAFDEB4CC92E895D9081 /* Models */,
 				C73BD04D2D6AD13538A4D3E3 /* Resources */,
 				50DCF305A7684CEB872E8E63 /* Services */,
@@ -203,7 +206,7 @@
 		E2C4AFE19D88C3D78C93976E /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				DBG0F1E20A5B4C8E9AF30DE1 /* DebugProToggle.swift */,
+				B6EAA0A57FA529E4FA09F48E /* DebugProToggle.swift */,
 				7A86EE5462E82319D323AF1C /* EditorView.swift */,
 				BF5D10603D8C4CBCEBF63691 /* ExportSheet.swift */,
 				F2B1C3A5D25B8EA4299A5A39 /* ImportDropZone.swift */,
@@ -236,7 +239,6 @@
 			name = Avatar;
 			packageProductDependencies = (
 				24422B485569134EE9164799 /* Sparkle */,
-				F1A5B8C400D11E8F00000002 /* Supabase */,
 			);
 			productName = Avatar;
 			productReference = FB7ECB473A580210DC4D2672 /* Avatar.app */;
@@ -250,6 +252,12 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					AFCA11CCEB86A285714926DA = {
+						DevelopmentTeam = 5J92MMGKTX;
+						ProvisioningStyle = Automatic;
+					};
+				};
 			};
 			buildConfigurationList = F5DFA2253388A3B9C16F2C5A /* Build configuration list for PBXProject "Avatar" */;
 			developmentRegion = en;
@@ -262,7 +270,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				C8563EE8B7639A0683C1B596 /* XCRemoteSwiftPackageReference "Sparkle" */,
-				F1A5B8C400D11E8F00000003 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7BE0948B8680DB6BA122634A /* Products */;
@@ -307,7 +314,7 @@
 				89C89D347949E200275051E3 /* BackgroundPreset.swift in Sources */,
 				AEB460C0337997C6FA65993A /* BulkAligner.swift in Sources */,
 				E8AF2A53C52B50C4453C65B2 /* Compositor.swift in Sources */,
-				DBG01F0E1A5B4C8E9AF20DE0 /* DebugProToggle.swift in Sources */,
+				72482E9FF888BF58E4AE065D /* DebugProToggle.swift in Sources */,
 				22F331DA021385FF381B6BEA /* EditorView.swift in Sources */,
 				F0D56262FE85216D1648099E /* ExportPreset.swift in Sources */,
 				9CDEBB9401C040885B7B35B8 /* ExportService.swift in Sources */,
@@ -320,8 +327,8 @@
 				A6AB056EC5348AFDA387F49E /* LibraryView.swift in Sources */,
 				D43723746F3532F825382CAB /* Localization.swift in Sources */,
 				58C7C65381A278B69B016DDB /* MainWindow.swift in Sources */,
+				49C843F56791B3F2BB43B01E /* ModelContext+Save.swift in Sources */,
 				2CC00BB877BB10A664982FB7 /* ModelManager.swift in Sources */,
-				A1B2C3D4E5F6A7B8C9D0E1F3 /* UpscaleModelManager.swift in Sources */,
 				93DE69BFD660664855889F69 /* Portrait.swift in Sources */,
 				EBE90C07C35BAA7F586C5E6D /* PortraitUndoManager.swift in Sources */,
 				430A107B1D3198CE9ECDBA44 /* ProBadge.swift in Sources */,
@@ -330,10 +337,11 @@
 				68A855F7FE00A495A4F48EFB /* ProcessingStatusView.swift in Sources */,
 				D4851113A8AB34D81F2CE4EE /* SeedData.swift in Sources */,
 				C944B1F772FD3DFE3305D6C8 /* SettingsView.swift in Sources */,
-				F1A5B8C400D11E8F00000011 /* SupabaseConfig.swift in Sources */,
 				EDCEBBF69658512E9483D13B /* SidebarUpdateCard.swift in Sources */,
+				E591BE03D14322F93DF5CBB5 /* SupabaseConfig.swift in Sources */,
 				C863651EF551A89CF19F884A /* URLSchemeHandler.swift in Sources */,
 				EAA5F4DF5638ED9457ED418F /* UpdateManager.swift in Sources */,
+				462CA9949E2A3E396FD5BC74 /* UpscaleModelManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -408,23 +416,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Avatar/Avatar.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = 5J92MMGKTX;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
-				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
-				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
-				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
-				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
-				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
-				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
-				ENABLE_RESOURCE_ACCESS_USB = NO;
 				INFOPLIST_FILE = Avatar/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -433,7 +426,6 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = nl.avatar.app;
 				PRODUCT_NAME = Avatar;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -444,23 +436,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Avatar/Avatar.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = 5J92MMGKTX;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
-				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
-				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
-				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
-				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
-				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
-				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
-				ENABLE_RESOURCE_ACCESS_USB = NO;
 				INFOPLIST_FILE = Avatar/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -469,8 +446,8 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = nl.avatar.app;
 				PRODUCT_NAME = Avatar;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
+				configurationSettingsFile = Avatar/Config.xcconfig;
 			};
 			name = Debug;
 		};
@@ -575,14 +552,6 @@
 				minimumVersion = 2.6.0;
 			};
 		};
-		F1A5B8C400D11E8F00000003 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/supabase/supabase-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.24.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -590,11 +559,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C8563EE8B7639A0683C1B596 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
-		};
-		F1A5B8C400D11E8F00000002 /* Supabase */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F1A5B8C400D11E8F00000003 /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Supabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
