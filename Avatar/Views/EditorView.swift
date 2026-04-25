@@ -3,18 +3,6 @@ import SwiftData
 import AppKit
 import UniformTypeIdentifiers
 
-/// Logs and swallows save errors to avoid crashing the UI on transient issues.
-@discardableResult
-private func save(_ context: ModelContext) -> Bool {
-    do {
-        try context.save()
-        return true
-    } catch {
-        print("[Save] failed: \(error)")
-        return false
-    }
-}
-
 struct EditorView: View {
     @Bindable var portrait: Portrait
     @Environment(\.modelContext) private var context
@@ -230,7 +218,7 @@ struct EditorView: View {
                         canvasSide: side,
                         cutoutSize: cutoutSize,
                         isVisible: imageSelected,
-                        onCommit: { save(context) }
+                        onCommit: { saveModel(context) }
                     )
                 }
                 .frame(width: side, height: side)
@@ -358,7 +346,7 @@ struct EditorView: View {
             }
             .onEnded { _ in
                 if let before = dragUndoSnapshot {
-                    save(context)
+                    saveModel(context)
                     PortraitUndoManager.registerFromSnapshots(
                         before: before,
                         after: PortraitUndoManager.snapshot(of: portrait),
@@ -368,7 +356,7 @@ struct EditorView: View {
                         actionName: Loc.moveAction
                     )
                 } else {
-                    save(context)
+                    saveModel(context)
                 }
                 dragStart = nil
                 dragUndoSnapshot = nil
@@ -461,7 +449,7 @@ struct EditorView: View {
                     .frame(width: 16)
                 TextField(Loc.employeeName, text: $portrait.name)
                     .textFieldStyle(.plain)
-                    .onChange(of: portrait.name) { save(context) }
+                    .onChange(of: portrait.name) { saveModel(context) }
             }
             HStack(spacing: 8) {
                 Image(systemName: "tag")
@@ -469,7 +457,7 @@ struct EditorView: View {
                     .frame(width: 16)
                 TextField(Loc.role, text: $portrait.tags)
                     .textFieldStyle(.plain)
-                    .onChange(of: portrait.tags) { save(context) }
+                    .onChange(of: portrait.tags) { saveModel(context) }
             }
         } header: {
             Text(Loc.info)
@@ -516,7 +504,7 @@ struct EditorView: View {
                                 trackSliderUndo(actionName: Loc.scale)
                                 portrait.scale = $0
                                 portrait.updatedAt = Date()
-                                save(context)
+                                saveModel(context)
                             }
                         ),
                         in: 0.05...4.0
@@ -554,7 +542,7 @@ struct EditorView: View {
         trackSliderUndo(actionName: Loc.scale)
         portrait.scale = min(4.0, max(0.05, portrait.scale + delta))
         portrait.updatedAt = Date()
-        save(context)
+        saveModel(context)
         #if os(macOS)
         haptics.perform(.generic, performanceTime: .now)
         #endif
@@ -875,7 +863,7 @@ struct EditorView: View {
                             value.wrappedValue = snapped
                             portrait.updatedAt = Date()
                             appState.invalidateAdjusted(for: portrait)
-                            save(context)
+                            saveModel(context)
                         }
                     ),
                     in: range
@@ -906,7 +894,7 @@ struct EditorView: View {
         portrait.adjShadows = 0
         portrait.updatedAt = Date()
         appState.invalidateAdjusted(for: portrait)
-        save(context)
+        saveModel(context)
         PortraitUndoManager.registerFromSnapshots(
             before: before,
             after: PortraitUndoManager.snapshot(of: portrait),
@@ -960,7 +948,7 @@ struct EditorView: View {
         portrait.offsetX = Double(t.offset.width)
         portrait.offsetY = Double(t.offset.height)
         portrait.updatedAt = Date()
-        save(context)
+        saveModel(context)
         PortraitUndoManager.registerFromSnapshots(
             before: before,
             after: PortraitUndoManager.snapshot(of: portrait),
@@ -1499,13 +1487,13 @@ struct BackgroundPicker: View {
         PortraitUndoManager.beginChange(for: portrait, context: context, undoManager: undoManager, appState: appState, actionName: Loc.backgroundAction)
         portrait.backgroundPresetID = bg.id
         portrait.updatedAt = Date()
-        save(context)
+        saveModel(context)
     }
 
     private func setDefault(_ bg: BackgroundPreset) {
         for other in backgrounds { other.isDefault = false }
         bg.isDefault = true
-        save(context)
+        saveModel(context)
     }
 
     private func delete(_ bg: BackgroundPreset) {
@@ -1518,7 +1506,7 @@ struct BackgroundPicker: View {
         }
         appState.invalidateBackground(bg)
         context.delete(bg)
-        save(context)
+        saveModel(context)
     }
 
     private func addNewBackground(_ kind: AddBackgroundKind) {
@@ -1532,7 +1520,7 @@ struct BackgroundPicker: View {
                 color: (r, g, b, 1.0)
             )
             context.insert(bg)
-            save(context)
+            saveModel(context)
             select(bg)
         }
     }
@@ -1548,7 +1536,7 @@ struct BackgroundPicker: View {
             let name = url.deletingPathExtension().lastPathComponent
             let bg = BackgroundPreset(name: name, kind: .image, imageData: data)
             context.insert(bg)
-            save(context)
+            saveModel(context)
             select(bg)
         }
         #endif
@@ -1671,7 +1659,7 @@ struct BackgroundChip: View {
         let trimmed = editName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             preset.name = trimmed
-            save(context)
+            saveModel(context)
         }
         isRenaming = false
     }

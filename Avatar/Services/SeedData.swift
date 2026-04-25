@@ -2,18 +2,6 @@ import Foundation
 import SwiftData
 import AppKit
 
-/// Logs and swallows save errors.
-@discardableResult
-private func save(_ context: ModelContext) -> Bool {
-    do {
-        try context.save()
-        return true
-    } catch {
-        print("[Save] failed: \(error)")
-        return false
-    }
-}
-
 enum SeedData {
     static func seedIfNeeded(context: ModelContext) {
         seedExportPresetsIfNeeded(context: context)
@@ -59,7 +47,7 @@ enum SeedData {
                 ))
             }
         }
-        save(context)
+        saveModel(context)
     }
 
     private static func seedDefaultBackgroundIfNeeded(context: ModelContext) {
@@ -99,6 +87,6 @@ enum SeedData {
             didInsert = true
         }
 
-        if didInsert { save(context) }
+        if didInsert { saveModel(context) }
     }
 }

@@ -40,19 +40,6 @@ private func isValidImageData(_ data: Data) -> Bool {
     return false
 }
 
-/// Logs and swallows save errors to avoid crashing the UI on transient issues.
-/// Uses os_log in production; good for debugging.
-@discardableResult
-private func save(_ context: ModelContext) -> Bool {
-    do {
-        try context.save()
-        return true
-    } catch {
-        print("[Save] failed: \(error)")
-        return false
-    }
-}
-
 /// Centralised drop-handler used by every view that should accept a portrait
 /// drag-and-drop (the empty-state import zone AND the editor surface, so users
 /// can drop a fresh photo at any time without going back to an empty state).
@@ -256,7 +243,7 @@ enum ImportFlow {
                     fresh.isMagicRetouched = false
                     fresh.preRetouchPNG = nil
                     fresh.updatedAt = Date()
-                    save(context)
+                    saveModel(context)
                     // Purge any cached decoded cutout so the editor shows the
                     // refreshed PNG on next access.
                     appState.invalidateCutout(for: fresh)
@@ -379,7 +366,7 @@ enum ImportFlow {
                     fresh.isMagicRetouched = false
                     fresh.preRetouchPNG = nil
                     fresh.updatedAt = Date()
-                    save(context)
+                    saveModel(context)
                     appState.invalidateCutout(for: fresh)
                     appState.isProcessing = false
                     print("[Upscale] DONE id=\(fresh.id) factor=\(factor)")
@@ -428,7 +415,7 @@ enum ImportFlow {
         portrait.preUpscaleOriginalData = nil
         portrait.preUpscaleCutoutPNG = nil
         portrait.updatedAt = Date()
-        save(context)
+        saveModel(context)
         appState.invalidateCutout(for: portrait)
     }
 
@@ -478,7 +465,7 @@ enum ImportFlow {
                 fresh.cutoutPNG = pngData
                 fresh.isMagicRetouched = true
                 fresh.updatedAt = Date()
-                save(context)
+                saveModel(context)
                 appState.invalidateCutout(for: fresh)
                 appState.isProcessing = false
                 print("[MagicRetouch] DONE id=\(fresh.id)")
@@ -493,7 +480,7 @@ enum ImportFlow {
         portrait.preRetouchPNG = nil
         portrait.isMagicRetouched = false
         portrait.updatedAt = Date()
-        save(context)
+        saveModel(context)
         appState.invalidateCutout(for: portrait)
     }
 
@@ -558,7 +545,7 @@ enum ImportFlow {
                 }
                 fresh.isBodyExtended = true
                 fresh.updatedAt = Date()
-                save(context)
+                saveModel(context)
 
                 // Refresh entitlement so the credits counter reflects the spend.
                 appState.refreshEntitlement()
@@ -594,7 +581,7 @@ enum ImportFlow {
         portrait.isBodyExtended = false
         portrait.preExtendBodyCutoutPNG = nil
         portrait.updatedAt = Date()
-        save(context)
+        saveModel(context)
         appState.invalidateCutout(for: portrait)
     }
 
@@ -646,7 +633,7 @@ enum ImportFlow {
                     scale: Double(transform.scale)
                 )
                 context.insert(portrait)
-                save(context)
+                saveModel(context)
                 appState.selectedPortraitID = portrait.id
                 appState.isProcessing = false
                 print("[Import] DONE id=\(portrait.id)")

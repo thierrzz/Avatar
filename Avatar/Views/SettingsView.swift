@@ -3,18 +3,6 @@ import SwiftData
 import AppKit
 import Sparkle
 
-/// Logs and swallows save errors to avoid crashing the UI on transient issues.
-@discardableResult
-private func save(_ context: ModelContext) -> Bool {
-    do {
-        try context.save()
-        return true
-    } catch {
-        print("[Save] failed: \(error)")
-        return false
-    }
-}
-
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
 
@@ -81,7 +69,7 @@ struct BackgroundsSettings: View {
             let name = url.deletingPathExtension().lastPathComponent
             let bg = BackgroundPreset(name: name, kind: .image, imageData: data)
             context.insert(bg)
-            save(context)
+            saveModel(context)
         }
     }
 
@@ -94,7 +82,7 @@ struct BackgroundsSettings: View {
                     Double(ns.blueComponent), Double(ns.alphaComponent))
         )
         context.insert(bg)
-        save(context)
+        saveModel(context)
     }
 }
 
@@ -128,7 +116,7 @@ private struct BackgroundSettingsCard: View {
                 .textFieldStyle(.plain)
                 .font(.caption)
                 .multilineTextAlignment(.center)
-                .onChange(of: preset.name) { save(context) }
+                .onChange(of: preset.name) { saveModel(context) }
 
             HStack(spacing: 6) {
                 Button {
@@ -141,7 +129,7 @@ private struct BackgroundSettingsCard: View {
 
                 Button {
                     context.delete(preset)
-                    save(context)
+                    saveModel(context)
                 } label: {
                     Image(systemName: "trash")
                 }
@@ -160,7 +148,7 @@ private struct BackgroundSettingsCard: View {
     private func setDefault() {
         for bg in allBackgrounds { bg.isDefault = false }
         preset.isDefault = true
-        save(context)
+        saveModel(context)
     }
 }
 
@@ -180,30 +168,30 @@ struct ExportPresetsSettings: View {
                     let p = ExportPreset(name: Loc.new, width: 512, height: 512,
                                          shape: .square, isBuiltIn: false, sortOrder: next)
                     context.insert(p)
-                    save(context)
+                    saveModel(context)
                 } label: { Label(Loc.addPreset, systemImage: "plus") }
             }
 
             Table(presets) {
                 TableColumn(Loc.name) { p in
-                    TextField("", text: Binding(get: { p.name }, set: { p.name = $0; save(context) }))
+                    TextField("", text: Binding(get: { p.name }, set: { p.name = $0; saveModel(context) }))
                 }
                 TableColumn(Loc.width) { p in
                     TextField("", value: Binding(
                         get: { p.width },
-                        set: { p.width = max(16, $0); save(context) }
+                        set: { p.width = max(16, $0); saveModel(context) }
                     ), format: .number)
                 }
                 TableColumn(Loc.height) { p in
                     TextField("", value: Binding(
                         get: { p.height },
-                        set: { p.height = max(16, $0); save(context) }
+                        set: { p.height = max(16, $0); saveModel(context) }
                     ), format: .number)
                 }
                 TableColumn(Loc.shape) { p in
                     Picker("", selection: Binding(
                         get: { p.shape },
-                        set: { p.shape = $0; save(context) }
+                        set: { p.shape = $0; saveModel(context) }
                     )) {
                         ForEach(ExportShape.allCases) { s in Text(s.label).tag(s) }
                     }
@@ -212,7 +200,7 @@ struct ExportPresetsSettings: View {
                 TableColumn("") { p in
                     Button {
                         context.delete(p)
-                        save(context)
+                        saveModel(context)
                     } label: { Image(systemName: "trash") }
                     .buttonStyle(.plain)
                     .disabled(p.isBuiltIn)

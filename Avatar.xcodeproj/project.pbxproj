@@ -15,6 +15,7 @@
 		22F331DA021385FF381B6BEA /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A86EE5462E82319D323AF1C /* EditorView.swift */; };
 		280A11648DAEFCF19F5E82C9 /* ProUpgradeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130A60B0BF158CAEE0CB1E30 /* ProUpgradeSheet.swift */; };
 		2CC00BB877BB10A664982FB7 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355D09CA2450C106801EAD77 /* ModelManager.swift */; };
+		35BA180F51EA4E407C8CE194 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 2908C8F495E33C31BC66686B /* Supabase */; };
 		430A107B1D3198CE9ECDBA44 /* ProBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DED2448B10A7B5504F841578 /* ProBadge.swift */; };
 		4341E7B1ED1B23CD51BBAF22 /* logo.png in Resources */ = {isa = PBXBuildFile; fileRef = F1CAAB87E8E174A425083C2F /* logo.png */; };
 		462CA9949E2A3E396FD5BC74 /* UpscaleModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D4E6CBAC26BB9371D0204BF /* UpscaleModelManager.swift */; };
@@ -113,6 +114,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BCB144F53A50F7E154817D1C /* Sparkle in Frameworks */,
+				35BA180F51EA4E407C8CE194 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,6 +241,7 @@
 			name = Avatar;
 			packageProductDependencies = (
 				24422B485569134EE9164799 /* Sparkle */,
+				2908C8F495E33C31BC66686B /* Supabase */,
 			);
 			productName = Avatar;
 			productReference = FB7ECB473A580210DC4D2672 /* Avatar.app */;
@@ -270,6 +273,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				C8563EE8B7639A0683C1B596 /* XCRemoteSwiftPackageReference "Sparkle" */,
+				4E940B3E8C9FDB39B1283788 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7BE0948B8680DB6BA122634A /* Products */;
@@ -544,6 +548,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		4E940B3E8C9FDB39B1283788 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 		C8563EE8B7639A0683C1B596 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
@@ -559,6 +571,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C8563EE8B7639A0683C1B596 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		2908C8F495E33C31BC66686B /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E940B3E8C9FDB39B1283788 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

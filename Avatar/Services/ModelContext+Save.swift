@@ -3,7 +3,7 @@ import SwiftData
 
 /// Logs and swallows save errors to avoid crashing the UI on transient issues.
 @discardableResult
-func save(_ context: ModelContext) -> Bool {
+func saveModel(_ context: ModelContext) -> Bool {
     do {
         try context.save()
         return true

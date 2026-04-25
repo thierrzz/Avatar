@@ -1,18 +1,6 @@
 import Foundation
 import SwiftData
 
-/// Logs and swallows save errors.
-@discardableResult
-private func save(_ context: ModelContext) -> Bool {
-    do {
-        try context.save()
-        return true
-    } catch {
-        print("[Save] failed: \(error)")
-        return false
-    }
-}
-
 @MainActor
 enum BulkAligner {
     struct Snapshot {
@@ -65,7 +53,7 @@ enum BulkAligner {
                                offsetY: p.offsetY, updatedAt: p.updatedAt))
         }
 
-        save(context)
+        saveModel(context)
         registerUndo(before: before, after: after, context: context, undoManager: undoManager)
         return Result(aligned: before.count, skipped: skipped)
     }
@@ -79,7 +67,7 @@ enum BulkAligner {
         guard let um = undoManager, !before.isEmpty else { return }
         um.registerUndo(withTarget: context) { ctx in
             apply(before, in: ctx)
-            try? ctx.save()
+            saveModel(ctx)
             // Registering inside the undo handler makes this the redo action.
             registerUndo(before: after, after: before, context: ctx, undoManager: um)
         }
