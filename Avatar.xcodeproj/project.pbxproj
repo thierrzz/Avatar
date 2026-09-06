@@ -1854,7 +1854,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Avatar2/Avatar2.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 103;
+				CURRENT_PROJECT_VERSION = 104;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Avatar2/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1862,7 +1862,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.0.1;
+				MARKETING_VERSION = 2.0.2;
 				OTHER_LDFLAGS = "$(inherited) -weak_framework ImagePlayground -weak_framework FoundationModels";
 				PRODUCT_BUNDLE_IDENTIFIER = nl.squareone.aaavatar2;
 				PRODUCT_MODULE_NAME = Avatar2;
@@ -2020,7 +2020,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Avatar2/Avatar2.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 103;
+				CURRENT_PROJECT_VERSION = 104;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Avatar2/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -2028,7 +2028,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.0.1;
+				MARKETING_VERSION = 2.0.2;
 				OTHER_LDFLAGS = "$(inherited) -weak_framework ImagePlayground -weak_framework FoundationModels";
 				PRODUCT_BUNDLE_IDENTIFIER = nl.squareone.aaavatar2;
 				PRODUCT_MODULE_NAME = Avatar2;

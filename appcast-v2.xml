@@ -7,6 +7,18 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <item>
+      <title>Version 2.0.2</title>
+      <pubDate>Sun, 06 Sep 2026 13:29:59 +0200</pubDate>
+      <sparkle:version>104</sparkle:version>
+      <sparkle:shortVersionString>2.0.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/Square-One-Official/Avatar/releases/download/v2.0.2/Aaavatar-2.0.2.dmg"
+        length="11183299"
+        type="application/x-apple-diskimage"
+        sparkle:edSignature="A2hC04mfjtjO8azg1qGI7iFRDH042/ACwbTIkisYdz4bQBYIaweBh3MLjKjZ3Wm2n0IGEVkyvjT7RirVsHyBAw==" />
+    </item>
+    <item>
       <title>Version 2.0.1</title>
       <pubDate>Sat, 05 Sep 2026 00:36:28 +0200</pubDate>
       <sparkle:version>103</sparkle:version>

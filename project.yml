@@ -267,8 +267,8 @@ targets:
         # v1-release-bump het v2-kanaal stil hernummeren. Build start op 100:
         # ruim boven élk v1-buildnummer, zodat een dev-binary die ooit op het
         # gedeelde feed stond nooit een "downgrade" ziet.
-        MARKETING_VERSION: "2.0.1"
-        CURRENT_PROJECT_VERSION: "103"
+        MARKETING_VERSION: "2.0.2"
+        CURRENT_PROJECT_VERSION: "104"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_PREVIEWS: YES
