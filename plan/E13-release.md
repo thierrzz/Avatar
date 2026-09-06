@@ -282,7 +282,7 @@ main = v2-main = d65c4e8). Sparkle-e2e op een 2.0.0-install: Thierry.
 
 ## 13.8 — Sparkle-install faalt vanuit de sandbox (mach-lookup-entitlements) [INFRA]
 
-- status: done (code); release 2.0.2 gated op Thierry
+- status: done — 2.0.2 (build 104) live 2026-09-06; sql/023 + main-push + CMS-bericht nog door Thierry
 - owner: INFRA
 - branch: v2-main (hotfix, 2026-09-06)
 
@@ -355,4 +355,17 @@ Avatar2Tests incl. nieuwe kaart-tests. ⚠ Niet gecommit/gereleased: 2.0.2 (buil
 104) via `release-v2.sh 2.0.2 104` + CMS-announcement voor 2.0.0/2.0.1-installs
 (handmatige DMG-herinstallatie éénmalig nodig) = besluit Thierry. De e2e van het
 Sparkle-pad zelf kan pas met een geïnstalleerde 2.0.2 → 2.0.3.
+
+**Uitgerold (2026-09-06 13:30):** ✅ `release-v2.sh 2.0.2 104` vanuit een schone
+tijdelijke worktree (v2-main had een parallelle sessie met dirty Shell-bestanden +
+een untracked Swift-bestand dat anders mee was gecompileerd): archive → Developer
+ID-export → DMG → notarisatie Accepted → staple → EdDSA → appcast-v2 (item 2.0.2/104
+bovenaan, mirror byte-gelijk) → tag v2.0.2 op 2491310 → GitHub-release latest
+(`Aaavatar-2.0.2.dmg` + stabiele `Aaavatar.dmg`, 11183299 B; website-link serveert
+'m). Entitlements in het gearchiveerde Release-product geverifieerd (-spks/-spki).
+v2-main ff naar 2491310 + gepusht; avatars-api via `vercel --prod` gedeployd —
+`api.aaavatar.nl/appcast-v2.xml` serveert 2.0.2. ⏳ Thierry: sql/023 in de
+Supabase SQL-editor → `main` ff naar 2491310 + push (admin-deploy met het
+maxAppVersion-veld) → CMS-bericht (maxAppVersion 2.0.1, CTA naar de DMG) →
+eigen Mac handmatig naar 2.0.2. Sparkle-e2e pas mogelijk bij 2.0.2 → 2.0.3.
 
