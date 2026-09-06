@@ -364,8 +364,11 @@ bovenaan, mirror byte-gelijk) → tag v2.0.2 op 2491310 → GitHub-release lates
 (`Aaavatar-2.0.2.dmg` + stabiele `Aaavatar.dmg`, 11183299 B; website-link serveert
 'm). Entitlements in het gearchiveerde Release-product geverifieerd (-spks/-spki).
 v2-main ff naar 2491310 + gepusht; avatars-api via `vercel --prod` gedeployd —
-`api.aaavatar.nl/appcast-v2.xml` serveert 2.0.2. ⏳ Thierry: sql/023 in de
-Supabase SQL-editor → `main` ff naar 2491310 + push (admin-deploy met het
-maxAppVersion-veld) → CMS-bericht (maxAppVersion 2.0.1, CTA naar de DMG) →
-eigen Mac handmatig naar 2.0.2. Sparkle-e2e pas mogelijk bij 2.0.2 → 2.0.3.
+`api.aaavatar.nl/appcast-v2.xml` serveert 2.0.2. ✅ `main` gepusht door Thierry
+(07cc4f6, ~13:40) → avatar-admin prod-deploy 13:42. Artefact-check 16:10: GitHub-DMG
+byte-gelijk (sha256 e6fac805…), stapler OK, app in de DMG "accepted, Notarized
+Developer ID", appcast-EdDSA verifieert (`sign_update --verify`, negatieve
+controle faalt). ⏳ Thierry: bevestigen dat sql/023 in de Supabase SQL-editor is
+toegepast (niet op afstand te checken: admin-API = MFA) → CMS-bericht
+(maxAppVersion 2.0.1, CTA naar de DMG) → eigen Mac handmatig naar 2.0.2. Sparkle-e2e pas mogelijk bij 2.0.2 → 2.0.3.
 
