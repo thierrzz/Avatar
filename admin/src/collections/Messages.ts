@@ -129,6 +129,14 @@ export const Messages: CollectionConfig = {
           admin: { description: "Semver-gate, bv. '2.0.0'. Oudere clients zien dit bericht niet." },
         },
         {
+          name: "maxAppVersion",
+          type: "text",
+          admin: {
+            description:
+              "Bovengrens (inclusief), bv. '2.0.1'. Alléén clients t/m deze versie zien het bericht — bv. 'installeer de DMG opnieuw' voor 2.0.0/2.0.1 (E13.8). Leeg = geen bovengrens.",
+          },
+        },
+        {
           name: "platform",
           type: "select",
           defaultValue: "all",

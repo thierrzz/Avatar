@@ -92,6 +92,16 @@ project.yml (Avatar2-blok) ─bump─► xcodegen ─► xcodebuild archive ─�
   bleef eeuwig staan). Weggehaald 2026-09-02;
   `SUEnableInstallerLauncherService` blijft (nodig voor installeren vanuit de
   sandbox).
+- **Sandbox + Sparkle = ook mach-lookup-uitzonderingen.** De installer
+  (Autoupdate) luistert op de mach-services `nl.squareone.aaavatar2-spki` en
+  `-spks`; de app mag die alleen opzoeken met
+  `com.apple.security.temporary-exception.mach-lookup.global-name` in
+  `Avatar2.entitlements`. Zonder die twee regels (2.0.0/2.0.1, E13.8) downloadt
+  Sparkle netjes, herstart de app, maar installeert niets — en de fout staat
+  alleen in Console (`sandboxd … deny(1) mach-lookup …-spks`) en Settings →
+  About. Let op: dit zit in de *draaiende* app, dus een kapotte install kan
+  zichzelf niet via Sparkle repareren; alleen een handmatige DMG-install helpt.
+  Controle na een export: `codesign -d --entitlements :- Aaavatar.app | grep spk`.
 
 ## Eenmalige setup (alleen Thierry)
 
@@ -169,7 +179,11 @@ nog niet bestaat.
 8. Update-e2e: een geïnstalleerde oudere 2.0-build → Settings → About →
    "Check now" → kaart linksonder "Aaavatar <ver> is available" → Install
    Update → voortgang → Relaunch → nieuwe versie draait. Plus een verse
-   download-test via de release-pagina (Gatekeeper "verified").
+   download-test via de release-pagina (Gatekeeper "verified"). Blijft de oude
+   versie draaien: `/usr/bin/log show --last 10m --predicate 'process ==
+   "Autoupdate" OR eventMessage CONTAINS "mach-lookup"'` (let op `/usr/bin/log`
+   — zsh heeft een eigen `log`-builtin dat stil niets doet). Oudere installs dan
+   2.0.2 kunnen dit pad niet halen (E13.8).
 9. Staged gepubliceerd (`PRERELEASE=1`)? Dan nu live:
    ```bash
    gh release edit v<ver> --prerelease=false --latest

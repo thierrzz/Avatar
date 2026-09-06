@@ -19,5 +19,17 @@
 	<array>
 		<string>/Library/Containers/nl.avatar.app/Data/Library/Application Support/</string>
 	</array>
+	<!-- Sparkle 2 vanuit de sandbox (E13.8, 2026-09-06): de app praat met de
+	     Autoupdate-installer via de mach-services <bundle-id>-spki (installer)
+	     en -spks (status). Zonder deze uitzondering weigert de sandbox de
+	     look-up ("deny mach-lookup nl.squareone.aaavatar2-spks"), krijgt
+	     Autoupdate nooit de installatiedata en herstart Sparkle gewoon de
+	     oude build — precies wat 2.0.0/2.0.1 deden. SUEnableInstallerLauncherService
+	     alleen is niet genoeg: https://sparkle-project.org/documentation/sandboxing/ -->
+	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+	<array>
+		<string>nl.squareone.aaavatar2-spks</string>
+		<string>nl.squareone.aaavatar2-spki</string>
+	</array>
 </dict>
 </plist>

@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireUser } from "../../lib/auth.js";
 import { proOverrideFor } from "../../lib/proAccess.js";
 import { activeSubscription, supabase } from "../../lib/supabase.js";
-import { fetchPublishedMessages, meetsMinVersion } from "../../lib/payload.js";
+import { fetchPublishedMessages, meetsMinVersion, withinMaxVersion } from "../../lib/payload.js";
 
 /**
  * GET /v1/messages (E17.2)
@@ -74,8 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       // Platform (client is macOS).
       if (m.platform !== "all" && m.platform !== "macos") continue;
-      // App-versie.
+      // App-versie. max = E13.8: een "installeer de DMG opnieuw"-bericht
+      // alléén voor 2.0.0/2.0.1 (die kunnen niet via Sparkle updaten).
       if (!meetsMinVersion(appVersion, m.minAppVersion)) continue;
+      if (!withinMaxVersion(appVersion, m.maxAppVersion)) continue;
       // Dismissed.
       if (seenSlugs.has(m.slug)) continue;
 

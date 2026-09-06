@@ -844,6 +844,8 @@ export type PayloadMessage = {
   signupAfter: string | null;
   signupBefore: string | null;
   minAppVersion: string | null;
+  /// Bovengrens (inclusief) — E13.8: bereik alléén 2.0.0/2.0.1-installs.
+  maxAppVersion: string | null;
   platform: "all" | "macos";
 };
 
@@ -943,6 +945,10 @@ function normalizeMessage(raw: unknown): PayloadMessage | null {
     signupAfter: str(targeting.signupAfter),
     signupBefore: str(targeting.signupBefore),
     minAppVersion: str(targeting.minAppVersion),
+    maxAppVersion: (() => {
+      const v = str(targeting.maxAppVersion);
+      return v && v.trim() ? v.trim() : null;
+    })(),
     platform,
   };
 }

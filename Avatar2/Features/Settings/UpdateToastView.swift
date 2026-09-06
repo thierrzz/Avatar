@@ -5,10 +5,14 @@
 //   downloading→ voortgangspil (+ %) / "Cancel"
 //   extracting → spinner
 //   ready      → "Relaunch" / "Later" (Sparkle installeert dan bij afsluiten)
+//   failed     → reden + "Try again" / "Download" / "Dismiss" (E13.8, besluit
+//                Thierry 2026-09-06: een mislukte installatie mag nooit stil
+//                verdwijnen)
 // Zelfde kaartchrome als DSToast (bg Card, divider-rand, r-2xl, Shadows/Default);
-// smaller (300) zodat 'ie in de sidebar-kolom past. Fouten horen hier niet:
-// die staan in Settings → About.
+// smaller (300) zodat 'ie in de sidebar-kolom past. Check-fouten (achtergrond)
+// horen hier niet: die staan in Settings → About.
 
+import AppKit
 import AvatarUI
 import SwiftUI
 
@@ -55,6 +59,7 @@ struct UpdateToastView: View {
         case .downloading(let version, _): return "Downloading Aaavatar \(version)"
         case .extracting(let version): return "Preparing Aaavatar \(version)"
         case .readyToRelaunch(let version): return "Aaavatar \(version) is ready"
+        case .installFailed(let version, _): return "Aaavatar \(version) couldn't be installed"
         default: return ""
         }
     }
@@ -67,6 +72,8 @@ struct UpdateToastView: View {
             return "Almost there."
         case .readyToRelaunch:
             return "Relaunch to finish installing."
+        case .installFailed(_, let message):
+            return message
         default:
             return ""
         }
@@ -102,6 +109,18 @@ struct UpdateToastView: View {
             }
             DSGhostButton("Later", size: .small) {
                 updater.dismissAvailableUpdate()
+            }
+        case .installFailed:
+            DSNeutralButton("Try again", size: .small) {
+                updater.retryFailedUpdate()
+            }
+            // Uitweg als Sparkle het echt niet kan (bv. de sandbox-bug van
+            // 2.0.0/2.0.1): dezelfde DMG als de website-knop.
+            DSGhostButton("Download", size: .small) {
+                NSWorkspace.shared.open(AppLinks.latestDownload)
+            }
+            DSGhostButton("Dismiss", size: .small) {
+                updater.dismissFailedUpdate()
             }
         default:
             EmptyView()

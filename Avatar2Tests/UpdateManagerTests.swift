@@ -72,10 +72,36 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertEqual(manager.toastItem, .ready(version: "2.0.1"))
 
         manager.updateState(.error("boom"))
-        XCTAssertNil(manager.toastItem, "fouten horen in About, niet in de kaart")
+        XCTAssertNil(manager.toastItem, "check-fouten horen in About, niet in de kaart")
+
+        manager.updateState(.installFailed(version: "2.0.1", message: "boom"))
+        XCTAssertEqual(manager.toastItem, .failed(version: "2.0.1"),
+                       "een mislukte installatie mag nooit stil verdwijnen (E13.8)")
 
         manager.updateState(.upToDate)
         XCTAssertNil(manager.toastItem)
+    }
+
+    func testMislukteInstallatieTryAgainStartNieuweCheckEnDismissSluitDeKaart() {
+        let engine = FakeUpdaterEngine()
+        let manager = maakManager(engine: engine)
+
+        manager.updateState(.installFailed(version: "2.0.1", message: "boom"))
+        manager.retryFailedUpdate()
+        XCTAssertEqual(manager.state, .idle)
+        XCTAssertEqual(engine.userCheckCount, 1, "Try again = verse Sparkle-cyclus")
+
+        manager.updateState(.installFailed(version: "2.0.1", message: "boom"))
+        manager.dismissFailedUpdate()
+        XCTAssertEqual(manager.state, .idle)
+        XCTAssertNil(manager.toastItem)
+
+        // Buiten de mislukt-state zijn beide no-ops (geen extra check).
+        manager.updateState(.available(version: "2.0.1"))
+        manager.retryFailedUpdate()
+        manager.dismissFailedUpdate()
+        XCTAssertEqual(manager.state, .available(version: "2.0.1"))
+        XCTAssertEqual(engine.userCheckCount, 1)
     }
 
     func testKaartKeuzesZonderOpenSparkleVraagZijnVeilig() {

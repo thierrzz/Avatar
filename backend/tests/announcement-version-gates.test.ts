@@ -30,3 +30,13 @@ test("withinMaxVersion: unparseable segments fall back to 0 like meetsMinVersion
   assert.equal(withinMaxVersion("1.x", "1.99"), true);
   assert.equal(withinMaxVersion("banana", "1.99"), true);
 });
+
+// E13.8 (2026-09-06): the same max gate on /v1/messages reaches only the
+// 2.0.0/2.0.1 installs that lack Sparkle's sandbox entitlements and must
+// reinstall the DMG by hand. 2.0.2+ (fixed) must never see that message.
+test("withinMaxVersion: a 2.0.1 cap keeps 2.0.0/2.0.1 and drops 2.0.2+", () => {
+  assert.equal(withinMaxVersion("2.0.0", "2.0.1"), true);
+  assert.equal(withinMaxVersion("2.0.1", "2.0.1"), true);
+  assert.equal(withinMaxVersion("2.0.2", "2.0.1"), false);
+  assert.equal(withinMaxVersion("2.1.0", "2.0.1"), false);
+});

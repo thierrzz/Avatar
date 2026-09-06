@@ -41,6 +41,8 @@ struct SettingsAboutPage: View {
             return "Version \(version) downloaded — relaunch to install"
         case .error:
             return "Update check failed — try again later"
+        case .installFailed(let version, _):
+            return "Installing version \(version) failed — see the update card"
         }
     }
 

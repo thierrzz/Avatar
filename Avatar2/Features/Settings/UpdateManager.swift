@@ -32,7 +32,14 @@ enum UpdateState: Equatable {
     case downloading(version: String, progress: Double?)
     case extracting(version: String)
     case readyToRelaunch(version: String)
+    /// Achtergrond-/handmatige check mislukt (appcast onbereikbaar e.d.).
+    /// Bewust niet in de kaart: staat alleen in Settings → About.
     case error(String)
+    /// De gebruiker koos Install/Relaunch en Sparkle kon de update daarna niet
+    /// downloaden, verifiëren of installeren (E13.8). Dít hoort wél in de
+    /// kaart, mét reden — "de kaart verdwijnt en er gebeurt niets" is precies
+    /// hoe de sandbox-bug van 2.0.0/2.0.1 onzichtbaar bleef.
+    case installFailed(version: String, message: String)
 }
 
 /// Wat de update-kaart (linksonder, bij de sidebar) toont. Identiteit zónder
@@ -43,6 +50,7 @@ enum UpdateToastItem: Equatable {
     case downloading(version: String)
     case extracting(version: String)
     case ready(version: String)
+    case failed(version: String)
 }
 
 // MARK: - Engine-seam (E13.5)
@@ -123,14 +131,17 @@ final class UpdateManager: NSObject {
     private var cancellables = Set<AnyCancellable>()
 
     /// Kaart linksonder (Avatar2App → `.dsFloatingToast`). nil = geen kaart.
-    /// Fouten blijven bewust buiten de kaart: die staan in Settings → About en
-    /// mogen een achtergrondcheck niet in een nag veranderen.
+    /// Check-fouten blijven buiten de kaart (Settings → About): een
+    /// achtergrondcheck mag geen nag worden. Een mislukte installatie ná een
+    /// klik op Install/Relaunch komt wél in de kaart (besluit Thierry
+    /// 2026-09-06): de gebruiker heeft iets gevraagd en krijgt antwoord.
     var toastItem: UpdateToastItem? {
         switch state {
         case .available(let version): return .available(version: version)
         case .downloading(let version, _): return .downloading(version: version)
         case .extracting(let version): return .extracting(version: version)
         case .readyToRelaunch(let version): return .ready(version: version)
+        case .installFailed(let version, _): return .failed(version: version)
         case .idle, .upToDate, .checking, .error: return nil
         }
     }
@@ -203,15 +214,34 @@ final class UpdateManager: NSObject {
         userDriver.confirmInstallAndRelaunch()
     }
 
+    /// Kaart (mislukt): "Try again" — Sparkle heeft de sessie al afgesloten,
+    /// dus een nieuwe check start een verse cyclus (download opnieuw).
+    func retryFailedUpdate() {
+        guard case .installFailed = state else { return }
+        state = .idle
+        engine.checkForUpdates()
+    }
+
+    /// Kaart (mislukt): "Dismiss".
+    func dismissFailedUpdate() {
+        guard case .installFailed = state else { return }
+        state = .idle
+    }
+
     /// Intern (niet fileprivate) zodat de tests de kaart-mapping kunnen toetsen.
     func updateState(_ newState: UpdateState) {
         state = newState
     }
 
     /// Sparkle's `dismissUpdateInstallation` volgt direct op "geen update
-    /// gevonden"; die uitkomst mag daarbij niet meteen weer verdwijnen.
+    /// gevonden" én op een fout (ná de acknowledgement); die uitkomsten mogen
+    /// daarbij niet meteen weer verdwijnen — de gebruiker sluit ze zelf of de
+    /// volgende check overschrijft ze.
     fileprivate func settleAfterDismiss() {
-        if state != .upToDate { state = .idle }
+        switch state {
+        case .upToDate, .error, .installFailed: break
+        default: state = .idle
+        }
     }
 }
 
@@ -223,6 +253,9 @@ private final class InAppUserDriver: NSObject, SPUUserDriver {
     /// (Relaunch/Later) — Sparkle wacht erop; precies één keer beantwoorden.
     private var pendingReply: ((SPUUserUpdateChoice) -> Void)?
     private var downloadCancellation: (() -> Void)?
+    /// true zodra de gebruiker Install (of Relaunch) koos: een fout daarna is
+    /// een mislukte installatie (kaart), níet een mislukte check (About).
+    private var installRequested = false
     private var cachedNewVersion: String?
     private var expectedLength: UInt64 = 0
     private var receivedLength: UInt64 = 0
@@ -237,6 +270,7 @@ private final class InAppUserDriver: NSObject, SPUUserDriver {
     // MARK: keuzes vanuit de kaart
 
     func chooseInstall() {
+        if pendingReply != nil { installRequested = true }
         pendingReply?(.install)
         pendingReply = nil
     }
@@ -270,6 +304,7 @@ private final class InAppUserDriver: NSObject, SPUUserDriver {
                          state: SPUUserUpdateState,
                          reply: @escaping (SPUUserUpdateChoice) -> Void) {
         cachedNewVersion = appcastItem.displayVersionString
+        installRequested = false
         pendingReply = reply
         let version = appcastItem.displayVersionString
         Task { @MainActor in manager?.updateState(.available(version: version)) }
@@ -286,8 +321,25 @@ private final class InAppUserDriver: NSObject, SPUUserDriver {
     }
 
     func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) {
-        Task { @MainActor in manager?.updateState(.error(error.localizedDescription)) }
+        let message = Self.userFacingMessage(for: error)
+        let newState: UpdateState = installRequested
+            ? .installFailed(version: version, message: message)
+            : .error(message)
+        Task { @MainActor in manager?.updateState(newState) }
         acknowledgement()
+    }
+
+    /// Sparkle's `localizedDescription` is vaak generiek ("An error occurred
+    /// while running the updater. Please try again later."); de échte reden
+    /// zit in `localizedFailureReason`. Beide tonen, zodat "waarom" in de kaart
+    /// staat en niet alleen in Console.
+    static func userFacingMessage(for error: Error) -> String {
+        let nsError = error as NSError
+        var message = error.localizedDescription
+        if let reason = nsError.localizedFailureReason, !reason.isEmpty, reason != message {
+            message += "\n" + reason
+        }
+        return message
     }
 
     func showDownloadInitiated(cancellation: @escaping () -> Void) {
@@ -343,6 +395,7 @@ private final class InAppUserDriver: NSObject, SPUUserDriver {
     func dismissUpdateInstallation() {
         pendingReply = nil
         downloadCancellation = nil
+        installRequested = false
         cachedNewVersion = nil
         Task { @MainActor in manager?.settleAfterDismiss() }
     }

@@ -279,3 +279,80 @@ scope (zelfde besluit als 13.2): v1-achtergronden en transforms. Announcement
 `release-v2.sh` (genotariseerd + gestapled, EdDSA-item bovenaan appcast-v2, GitHub
 `latest`, website-link serveert de 2.0.1-DMG, prod-appcast byte-gelijk aan de canon,
 main = v2-main = d65c4e8). Sparkle-e2e op een 2.0.0-install: Thierry.
+
+## 13.8 — Sparkle-install faalt vanuit de sandbox (mach-lookup-entitlements) [INFRA]
+
+- status: done (code); release 2.0.2 gated op Thierry
+- owner: INFRA
+- branch: v2-main (hotfix, 2026-09-06)
+
+**Probleem (Thierry, 2026-09-06, 2.0.0 build 102 → 2.0.1):** kaart "Install
+Update" → download → installeren → kaart verdwijnt → niets; de app blijft 2.0.0.
+Log: `sandboxd: Sandbox: Aaavatar(19147) deny(1) mach-lookup
+nl.squareone.aaavatar2-spks`, Sparkle: "failed to probe status service … The
+remote port connection was invalidated from the updater. If your application is
+sandboxed, please ensure Installer Connection & Status entitlements are correctly
+set up", Autoupdate: "Timeout: installation data was never received". Sparkle
+termineert en herstart de app wél (daarom lijkt er "iets" te gebeuren), maar de
+installer heeft de update nooit gekregen. Beide DMG-downloads (11:33 en 11:34)
+staan nog in `~/Library/Containers/nl.squareone.aaavatar2/…/PersistentDownloads/`.
+De fout zelf wordt bewust niet in de kaart getoond (alleen Settings → About), dus
+voor de gebruiker "verdwijnt" de kaart gewoon.
+
+**Oorzaak:** Sparkle 2 vanuit de sandbox heeft naast
+`SUEnableInstallerLauncherService` ook twee mach-lookup-uitzonderingen nodig
+(`<bundle-id>-spki` en `-spks`, zie
+https://sparkle-project.org/documentation/sandboxing/). Die ontbraken in
+`Avatar2.entitlements` (en ontbreken óók in v1's `Avatar.entitlements` — v1 is
+bevroren, niet aangeraakt; v1-installs updaten naar 2.0 toch via de DMG).
+
+**Fix:** `com.apple.security.temporary-exception.mach-lookup.global-name` =
+[`nl.squareone.aaavatar2-spks`, `nl.squareone.aaavatar2-spki`] in
+`Avatar2/Avatar2.entitlements`.
+
+**Feedback bij falen (Thierry, 2026-09-06: "can't just close the toast and do
+nothing"):** nieuwe state `UpdateState.installFailed(version:message:)` — alleen
+voor fouten ná een klik op Install/Relaunch (`installRequested` in de
+user-driver); achtergrond-checkfouten blijven `.error` (About-only, geen nag).
+Kaart: "Aaavatar <ver> couldn't be installed" + Sparkle's
+`localizedDescription` én `localizedFailureReason` (daar staat de échte reden),
+knoppen "Try again" (verse check-cyclus) / "Download" (`AppLinks.latestDownload`,
+dezelfde DMG als de website-knop — de uitweg voor 2.0.0/2.0.1) / "Dismiss".
+`settleAfterDismiss` laat `.error`/`.installFailed` nu staan (Sparkle roept
+`dismissUpdateInstallation` direct ná de fout-acknowledgement; voorheen werd
+óók de About-fouttekst daardoor meteen weer `idle`). About: "Installing version
+<ver> failed — see the update card". Kaart-variant staat niet in Figma: opgezet
+in de stijl van de bestaande vier stappen (zelfde chrome, small-knoppen).
+
+**Bereik van de 2.0.0/2.0.1-installs (Thierry, 2026-09-06: "ask them to install
+the DMG and offer a link via the toast"):** die builds zijn niet meer te wijzigen,
+maar lezen wél `/v1/messages` bij elke launch en tonen het bericht als
+`DSMessageSheet` met een CTA-knop die een URL opent. De Messages-collectie had
+alleen `minAppVersion`; nu ook `targeting.maxAppVersion` (admin-veld, backend-
+filter `withinMaxVersion` in `api/v1/messages.ts`, `sql/023`, test), zodat het
+bericht 2.0.2+ nooit bereikt. Uitrol (gated, Thierry): sql/023 in de Supabase
+SQL-editor → main-push (admin-deploy) → `vercel --prod` avatars-api → bericht in
+admin: cohort all, maxAppVersion `2.0.1`, frequency everySignInUntilDismissed,
+CTA "Download Aaavatar 2.0.2" → `https://github.com/Square-One-Official/Avatar/releases/latest/download/Aaavatar.dmg`
+(= `AppLinks.latestDownload`), body: sleep de DMG naar Applications, bibliotheek
+blijft. Pas publiceren ná de 2.0.2-release, anders wijst de link nog naar 2.0.1.
+
+**Consequentie (besluit Thierry nodig):** de entitlement zit in de *draaiende*
+app, niet in de update. 2.0.0- en 2.0.1-installs kunnen dus nooit via Sparkle
+naar 2.0.2; die moeten éénmalig handmatig de DMG opnieuw installeren (drag naar
+/Applications, bibliotheek blijft — zelfde bundle-id/container). Vanaf 2.0.2
+werkt Sparkle wel. Voorstel: 2.0.2 (build 104) uitbrengen + korte melding via de
+CMS-announcement (`maxAppVersion` 2.0.1) met de download-link.
+
+**Result (2026-09-06):** ✅ mach-lookup-uitzonderingen `-spks`/`-spki` in
+`Avatar2.entitlements`, geverifieerd in de gesigneerde build (`codesign -d
+--entitlements`). ✅ Mislukte installatie ná Install/Relaunch toont nu een kaart
+met reden + Try again / Download / Dismiss (`UpdateState.installFailed`); check-
+fouten blijven About-only; `.error`/`.installFailed` overleven Sparkle's
+`dismissUpdateInstallation`. ✅ build-v2.sh volledig groen (EXIT=0, "alles groen";
+eigen DerivedData `build/dd-e138` omdat een parallelle sessie `build/dd` gebruikte),
+Avatar2Tests incl. nieuwe kaart-tests. ⚠ Niet gecommit/gereleased: 2.0.2 (build
+104) via `release-v2.sh 2.0.2 104` + CMS-announcement voor 2.0.0/2.0.1-installs
+(handmatige DMG-herinstallatie éénmalig nodig) = besluit Thierry. De e2e van het
+Sparkle-pad zelf kan pas met een geïnstalleerde 2.0.2 → 2.0.3.
+

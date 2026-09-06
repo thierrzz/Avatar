@@ -30,6 +30,7 @@ do not branch or skip numbers.
 | 020 | `020_atomic_credit_spend.sql` | Race-safe credit spend for paid generation endpoints (E56) | 001, 002 |
 | 021 | `021_announcements_max_app_version.sql` | `payload.announcements.max_app_version` for 1.x-only announcements (the "Aaavatar 2 is out" notice) — apply BEFORE the admin deploy that ships the field (the 2.0.0 `main` push) | 008 |
 | 022 | `022_credit_buckets.sql` | Two-bucket `current_credits()` (E14.12): the monthly grant refills at renewal, `topup_pack` credits never expire; ledger-only, no `subscriptions` window. Built-in self-check + pre-flight diff query (run section 1 → pre-flight → section 2) — applied 2026-09-04 | 001, 002, 020 |
+| 023 | `023_messages_max_app_version.sql` | `payload.messages.targeting_max_app_version` (E13.8): version cap on in-app messages so a "reinstall the DMG" notice reaches only 2.0.0/2.0.1 (no Sparkle sandbox entitlements) and never 2.0.2+ — apply BEFORE the admin deploy that ships the field | 019 |
 
 ## Data classification
 
